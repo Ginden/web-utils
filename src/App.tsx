@@ -36,6 +36,7 @@ const App: React.FC = () => {
       rotation,
       showLabels,
       isSummarizing,
+      ringLayoutConfig,
     },
     actions: {
       setDisplayType,
@@ -50,6 +51,7 @@ const App: React.FC = () => {
       handleDeleteFromHistory,
       handleOutputRequest,
       loadFromHistory,
+      setRingLayoutConfig,
     },
   } = useLedApp();
 
@@ -85,6 +87,7 @@ const App: React.FC = () => {
                 onLedClick={handleLedClick}
                 rotation={rotation}
                 showLabels={showLabels}
+                ringLayoutConfig={ringLayoutConfig}
               />
             </div>
           </div>
@@ -109,6 +112,8 @@ const App: React.FC = () => {
             showLabels={showLabels}
             onShowLabelsChange={setShowLabels}
             isSummarizing={isSummarizing}
+            ringLayoutConfig={ringLayoutConfig}
+            onRingLayoutConfigChange={setRingLayoutConfig}
           />
           <HistoryPanel
             history={history}

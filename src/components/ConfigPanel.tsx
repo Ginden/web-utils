@@ -19,6 +19,8 @@ interface ConfigPanelProps {
   showLabels: boolean;
   onShowLabelsChange: React.Dispatch<React.SetStateAction<boolean>>;
   isSummarizing: boolean; // New prop
+  ringLayoutConfig: import('../types').RingLayoutConfig;
+  onRingLayoutConfigChange: React.Dispatch<React.SetStateAction<import('../types').RingLayoutConfig>>;
 }
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({
@@ -40,9 +42,16 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   showLabels,
   onShowLabelsChange,
   isSummarizing,
+  ringLayoutConfig,
+  onRingLayoutConfigChange,
 }) => {
   const [outputFormat, setOutputFormat] = useState<'rgb' | 'bgr' | 'arduino'>('rgb');
   const rotationOptions = [0, 45, 90, 135, 180, 225, 270, 315];
+  const [showTuning, setShowTuning] = useState<boolean>(false);
+
+  const updateLayout = (key: keyof typeof ringLayoutConfig, value: number) => {
+    onRingLayoutConfigChange((prev) => ({ ...prev, [key]: value }));
+  };
 
   return (
     <div className="card-surface stack">
@@ -164,6 +173,38 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
         value={outputValue}
         placeholder="Generated output will appear here..."
       />
+
+      <details className="tuning" open={showTuning} onToggle={(e) => setShowTuning(e.currentTarget.open)}>
+        <summary className="tuning-toggle">Layout tuning (dev)</summary>
+        <div className="grid two">
+          <div className="field">
+            <label className="label">LED spacing (px)</label>
+            <input
+              className="control"
+              type="range"
+              min="8"
+              max="40"
+              step="1"
+              value={ringLayoutConfig.spacingPx}
+              onChange={(e) => updateLayout('spacingPx', parseFloat(e.target.value))}
+            />
+            <div className="muted small">{ringLayoutConfig.spacingPx.toFixed(0)}px</div>
+          </div>
+          <div className="field">
+            <label className="label">PCB thickness ratio</label>
+            <input
+              className="control"
+              type="range"
+              min="0.03"
+              max="0.12"
+              step="0.005"
+              value={ringLayoutConfig.pcbRatio}
+              onChange={(e) => updateLayout('pcbRatio', parseFloat(e.target.value))}
+            />
+            <div className="muted small">{(ringLayoutConfig.pcbRatio * 100).toFixed(1)}%</div>
+          </div>
+        </div>
+      </details>
     </div>
   );
 };

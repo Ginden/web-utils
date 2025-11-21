@@ -19,3 +19,10 @@ export type HistoryEntry = {
       matrixHeight: number;
     }
 );
+
+export type RingLayoutConfig = {
+  /** Desired arc distance between diode centers in px. */
+  spacingPx: number;
+  /** PCB thickness ratio relative to ring size. */
+  pcbRatio: number;
+};

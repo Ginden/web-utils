@@ -1,5 +1,5 @@
-import React from 'react';
-import type { RgbColor } from '../types';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { RgbColor, RingLayoutConfig } from '../types';
 import { rgbToHashHex } from '../utils/colorUtils'; // Import rgbToHashHex
 
 interface DisplayProps {
@@ -11,6 +11,7 @@ interface DisplayProps {
   onLedClick: (index: number) => void;
   rotation: number;
   showLabels: boolean;
+  ringLayoutConfig?: RingLayoutConfig;
 }
 
 // Function to get a contrasting color (black or white) for a given RGB color
@@ -29,18 +30,74 @@ const Display: React.FC<DisplayProps> = ({
   onLedClick,
   rotation,
   showLabels,
+  ringLayoutConfig,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 360, height: 360 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      setDimensions({ width: entry.contentRect.width, height: entry.contentRect.height });
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const ringLayout = useMemo(() => {
+    const cfg: RingLayoutConfig = {
+      spacingPx: 22,
+      pcbRatio: 0.06,
+      ...ringLayoutConfig,
+    };
+
+    const size = Math.max(360, Math.min(dimensions.width, dimensions.height));
+    const pcbWidth = Math.max(8, Math.min(28, size * cfg.pcbRatio));
+
+    const maxRadius = Math.max(60, (size - pcbWidth * 2) / 2);
+    const desiredRadius = (ringLeds * cfg.spacingPx) / (2 * Math.PI);
+    const ringRadius = Math.min(maxRadius, Math.max(16, desiredRadius));
+
+    const circumference = 2 * Math.PI * ringRadius;
+    const actualSpacing = circumference / Math.max(1, ringLeds);
+    const ledSize = Math.max(
+      10,
+      Math.min(34, actualSpacing * 0.75, pcbWidth * 0.85),
+    ); // keep LEDs within PCB band and reduce overlap
+
+    const effectiveSize = size;
+    const center = effectiveSize / 2;
+    return { ledSize, ringRadius, pcbWidth, size: effectiveSize, centerX: center, centerY: center };
+  }, [dimensions, ringLeds, ringLayoutConfig]);
+
+  const matrixLayout = useMemo(() => {
+    const size = Math.max(320, Math.min(dimensions.width, dimensions.height));
+    const padding = Math.max(4, size * 0.012);
+    const pcbMargin = Math.max(8, size * 0.03);
+    const maxCells = Math.max(matrixWidth, matrixHeight, 1);
+    const available = size - pcbMargin * 2;
+    const cellSize = Math.max(12, Math.min(40, available / maxCells - padding));
+    const contentWidth = matrixWidth * (cellSize + padding) - padding;
+    const contentHeight = matrixHeight * (cellSize + padding) - padding;
+    const svgWidth = contentWidth + pcbMargin * 2;
+    const svgHeight = contentHeight + pcbMargin * 2;
+    const centerX = svgWidth / 2;
+    const centerY = svgHeight / 2;
+    return { cellSize, padding, pcbMargin, svgWidth, svgHeight, centerX, centerY };
+  }, [dimensions, matrixHeight, matrixWidth]);
+
   const renderRing = () => {
-    const ledSize = 20;
-    const ringRadius = 100;
-    const pcbWidth = ledSize * 1.5;
-    const padding = pcbWidth;
-    const size = ringRadius * 2 + padding * 2;
-    const centerX = size / 2;
-    const centerY = size / 2;
+    const { ledSize, ringRadius, pcbWidth, size, centerX, centerY } = ringLayout;
 
     return (
-      <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`}>
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${size} ${size}`}
+        preserveAspectRatio="xMidYMid meet"
+      >
         <g transform={`rotate(${rotation}, ${centerX}, ${centerY})`}>
           <circle
             cx={centerX}
@@ -69,9 +126,10 @@ const Display: React.FC<DisplayProps> = ({
                   height={ledSize}
                   fill={hexColor}
                   stroke="#333"
-                  strokeWidth="1"
+                  strokeWidth={Math.max(1, ledSize * 0.05)}
                   onClick={() => onLedClick(i)}
                   style={{ cursor: 'pointer' }}
+                  rx={Math.max(2, ledSize * 0.18)}
                 />
                 {showLabels && (
                   <text
@@ -96,15 +154,7 @@ const Display: React.FC<DisplayProps> = ({
   };
 
   const renderMatrix = () => {
-    const cellSize = 20;
-    const pcbMargin = cellSize / 3;
-    const padding = 5;
-    const contentWidth = matrixWidth * (cellSize + padding) - padding;
-    const contentHeight = matrixHeight * (cellSize + padding) - padding;
-    const svgWidth = contentWidth + pcbMargin * 2;
-    const svgHeight = contentHeight + pcbMargin * 2;
-    const centerX = svgWidth / 2;
-    const centerY = svgHeight / 2;
+    const { cellSize, padding, pcbMargin, svgWidth, svgHeight, centerX, centerY } = matrixLayout;
 
     return (
       <svg width="100%" height="100%" viewBox={`0 0 ${svgWidth} ${svgHeight}`}>
@@ -141,6 +191,7 @@ const Display: React.FC<DisplayProps> = ({
                     strokeWidth="1"
                     onClick={() => onLedClick(index)}
                     style={{ cursor: 'pointer' }}
+                    rx={Math.max(2, cellSize * 0.2)}
                   />
                   {showLabels && (
                     <text
@@ -166,7 +217,10 @@ const Display: React.FC<DisplayProps> = ({
   };
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <div
+      ref={containerRef}
+      style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+    >
       {displayType === 'ring' ? renderRing() : renderMatrix()}
     </div>
   );

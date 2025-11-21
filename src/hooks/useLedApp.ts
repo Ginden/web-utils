@@ -11,7 +11,7 @@ import {
   parseStoredHistory,
   sanitizeLedColors,
 } from '../utils/ledState';
-import type { DisplayType, HistoryEntry, RgbColor } from '../types';
+import type { DisplayType, HistoryEntry, RingLayoutConfig, RgbColor } from '../types';
 
 const generateArduinoOutput = (colors: RgbColor[]) => {
   let output = `CRGB leds[] = {\n`;
@@ -34,6 +34,10 @@ export const useLedApp = () => {
   const [rotation, setRotation] = useState<number>(0);
   const [showLabels, setShowLabels] = useState<boolean>(true);
   const [isSummarizing, setIsSummarizing] = useState<boolean>(false);
+  const [ringLayoutConfig, setRingLayoutConfig] = useState<RingLayoutConfig>({
+    spacingPx: 22,
+    pcbRatio: 0.06,
+  });
 
   // Load from URL hash and localStorage on mount
   useEffect(() => {
@@ -220,6 +224,7 @@ export const useLedApp = () => {
       rotation,
       showLabels,
       isSummarizing,
+      ringLayoutConfig,
     },
     actions: {
       setDisplayType,
@@ -229,6 +234,7 @@ export const useLedApp = () => {
       setCurrentColor,
       setRotation,
       setShowLabels,
+      setRingLayoutConfig,
       handleLedClick,
       handleSaveToHistory,
       handleDeleteFromHistory,
