@@ -6,17 +6,21 @@ import './App.css';
 import { getSummary } from './api/SummarizerAPI'; // Import the summarizer API
 
 // Define the HistoryEntry interface to include the optional summary
-export interface HistoryEntry { // Export HistoryEntry
-  displayType: 'ring' | 'matrix';
-  ringLeds: number;
-  matrixWidth: number;
-  matrixHeight: number;
-  ledColors: string[];
-  rotation: number;
-  showLabels: boolean;
-  timestamp: string;
-  summary?: string; // Add optional summary field
-}
+export type HistoryEntry = {
+    id: string;
+    timestamp: string;
+    summary?: string; // Add optional summary field
+    ledColors: string[];
+    rotation: number;
+    showLabels: boolean;
+} & ({
+    displayType: 'ring';
+    ringLeds: number;
+} | {
+    displayType: 'matrix';
+    matrixWidth: number;
+    matrixHeight: number;
+})
 
 const App: React.FC = () => {
   const [displayType, setDisplayType] = useState<'ring' | 'matrix'>('ring');
@@ -30,6 +34,7 @@ const App: React.FC = () => {
   const [rotation, setRotation] = useState<number>(0);
   const [showLabels, setShowLabels] = useState<boolean>(true);
   const [isSummarizing, setIsSummarizing] = useState<boolean>(false); // New state for summarizer feedback
+  const [currentId, setCurrentId] = useState<string>('');
 
   // Helper to generate Arduino output for summarization
   const generateArduinoOutput = (colors: string[]) => {
@@ -48,70 +53,161 @@ const App: React.FC = () => {
     return output;
   };
 
-  // Load from URL hash and localStorage on mount
-  useEffect(() => {
-    try {
-      const savedHistory = localStorage.getItem('led_history');
-      if (savedHistory) {
-        setHistory(JSON.parse(savedHistory));
+    // Load from URL hash and localStorage on mount
+
+    useEffect(() => {
+
+      try {
+
+        const savedHistory = localStorage.getItem('led_history');
+
+        if (savedHistory) {
+
+          // Defer state update to avoid synchronous setState in effect
+
+          setTimeout(() => setHistory(JSON.parse(savedHistory)), 0);
+
+        }
+
+      } catch (e) {
+
+        console.error("Failed to parse history from localStorage", e);
+
       }
-    } catch (e) {
-      console.error("Failed to parse history from localStorage", e);
-    }
-    
-    const hash = window.location.hash.slice(1);
-    const params = new URLSearchParams(hash);
-    const type = params.get('type');
-    if (type === 'ring' || type === 'matrix') {
-      setDisplayType(type);
-      if (type === 'ring') {
-        setRingLeds(parseInt(params.get('leds') || '24', 10));
-      } else {
-        setMatrixWidth(parseInt(params.get('width') || '8', 10));
-        setMatrixHeight(parseInt(params.get('height') || '8', 10));
-      }
-      setRotation(parseInt(params.get('rotation') || '0', 10));
-      setShowLabels(params.get('labels') === 'true');
-      const colors = params.get('colors');
-      if (colors) {
-        setLedColors(colors.split(',').map(c => `#${c}`));
-      }
-    }
-  }, []);
+
+      
+
+      const hash = window.location.hash.slice(1);
+
+      const params = new URLSearchParams(hash);
+
+      const type = params.get('type') || 'ring';
+
+      const rotation = parseInt(params.get('rotation') || '0', 10)
+
+      const showLabels = params.get('labels') === 'true'
+
   
-  // Update URL hash on state change
-  useEffect(() => {
-    const params = new URLSearchParams();
-    params.set('type', displayType);
-    if (displayType === 'ring') {
-      params.set('leds', ringLeds.toString());
-    } else {
-      params.set('width', matrixWidth.toString());
-      params.set('height', matrixHeight.toString());
-    }
-    params.set('rotation', rotation.toString());
-    params.set('labels', String(showLabels));
-    params.set('colors', ledColors.map(c => c.slice(1)).join(','));
-    const hash = params.toString();
-    if (window.location.hash !== `#${hash}`) {
-        window.location.hash = hash
-    }
-  }, [displayType, ringLeds, matrixWidth, matrixHeight, rotation, showLabels, ledColors]);
 
+      // Defer all state updates that depend on URL parameters
 
-  // Re-initialize ledColors when display size changes
-  useEffect(() => {
-    const newSize = displayType === 'ring' ? ringLeds : matrixWidth * matrixHeight;
-    setLedColors(Array(newSize).fill('#000000'));
-  }, [displayType, ringLeds, matrixWidth, matrixHeight]);
+      setTimeout(() => {
 
-  const handleLedClick = (index: number) => {
-    setLedColors(p => {
-      const newColors = [...p];
-      newColors[index] = currentColor;
-      return newColors;
-    });
-  };
+          if (type === 'ring' || type === 'matrix') {
+
+              setDisplayType(type);
+
+              if (type === 'ring') {
+
+                  const ringLeds = parseInt(params.get('leds') || '24', 10);
+
+                  setRingLeds(ringLeds);
+
+                  const colors = params.get('colors');
+
+                  if (colors) {
+
+                      setLedColors(colors.split(',').map(c => `#${c}`));
+
+                  } else {
+
+                      setLedColors(Array(ringLeds).fill('#000000'));
+
+                  }
+
+  
+
+              } else {
+
+                  const matrixWidth = parseInt(params.get('width') || '8', 10);
+
+                  const matrixHeight = parseInt(params.get('height') || '8', 10);
+
+                  setMatrixWidth(matrixWidth);
+
+                  setMatrixHeight(matrixHeight);
+
+                  const colors = params.get('colors');
+
+                  if (colors) {
+
+                      setLedColors(colors.split(',').map(c => `#${c}`));
+
+                  } else {
+
+                      setLedColors(Array(matrixWidth * matrixHeight).fill('#000000'));
+
+                  }
+
+              }
+
+              setRotation(rotation);
+
+              setShowLabels(showLabels);
+
+          }
+
+      }, 0);
+
+  
+
+    }, []);
+
+    
+
+    // Update URL hash on state change
+
+    useEffect(() => {
+
+      const params = new URLSearchParams();
+
+      params.set('type', displayType);
+
+      if (displayType === 'ring') {
+
+        params.set('leds', ringLeds.toString());
+
+      } else {
+
+        params.set('width', matrixWidth.toString());
+
+        params.set('height', matrixHeight.toString());
+
+      }
+
+      params.set('rotation', rotation.toString());
+
+      params.set('labels', String(showLabels));
+
+      params.set('colors', ledColors.map(c => c.slice(1)).join(','));
+
+      const hash = params.toString();
+
+      if (window.location.hash !== `#${hash}`) {
+
+          window.location.hash = hash
+
+      }
+
+    }, [displayType, ringLeds, matrixWidth, matrixHeight, rotation, showLabels, ledColors]);
+
+  
+
+  
+
+    const handleLedClick = (index: number) => {
+
+      setLedColors(p => {
+
+        const newColors = [...p];
+
+        newColors[index] = currentColor;
+
+        return newColors;
+
+      });
+
+    };
   
   const handleSaveToHistory = async () => { // Made async
     setIsSummarizing(true);
@@ -119,10 +215,15 @@ const App: React.FC = () => {
     const summary = await getSummary(arduinoOutput); // Get summary
 
     const newHistoryEntry: HistoryEntry = {
-      displayType,
-      ringLeds,
-      matrixWidth,
-      matrixHeight,
+      ...(displayType === 'ring' ? {
+        displayType,
+        ringLeds,
+      } : {
+        displayType,
+        matrixWidth,
+        matrixHeight,
+      }),
+      id: currentId || crypto.randomUUID(),
       ledColors,
       rotation,
       showLabels,
@@ -143,9 +244,12 @@ const App: React.FC = () => {
 
   const loadFromHistory = (entry: HistoryEntry) => { // Use HistoryEntry interface
     setDisplayType(entry.displayType);
-    setRingLeds(entry.ringLeds);
-    setMatrixWidth(entry.matrixWidth);
-    setMatrixHeight(entry.matrixHeight);
+    if (entry.displayType === 'ring') {
+        setRingLeds(entry.ringLeds);
+    } else {
+        setMatrixWidth(entry.matrixWidth);
+        setMatrixHeight(entry.matrixHeight);
+    }
     setRotation(entry.rotation || 0);
     setShowLabels(entry.showLabels === undefined ? true : entry.showLabels);
     if (entry.ledColors) {
@@ -223,6 +327,8 @@ const App: React.FC = () => {
                 showLabels={showLabels}
                 onShowLabelsChange={setShowLabels}
                 isSummarizing={isSummarizing} // Pass isSummarizing to ConfigPanel
+                currentId={currentId}
+                onCurrentIdChange={setCurrentId}
               />
               <HistoryPanel history={history} onLoadHistory={loadFromHistory} onDeleteHistory={handleDeleteFromHistory} />
             </div>
