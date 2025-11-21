@@ -37,6 +37,8 @@ const App: React.FC = () => {
       showLabels,
       isSummarizing,
       ringLayoutConfig,
+      selectedFormat,
+      formatConfigs,
     },
     actions: {
       setDisplayType,
@@ -51,6 +53,8 @@ const App: React.FC = () => {
       handleDeleteFromHistory,
       handleOutputRequest,
       loadFromHistory,
+      setSelectedFormat,
+      setFormatConfigs,
     },
   } = useLedApp();
 
@@ -111,6 +115,10 @@ const App: React.FC = () => {
             showLabels={showLabels}
             onShowLabelsChange={setShowLabels}
             isSummarizing={isSummarizing}
+            selectedFormat={selectedFormat}
+            onSelectFormat={setSelectedFormat}
+            formatConfigs={formatConfigs}
+            onFormatConfigsChange={setFormatConfigs}
           />
           <HistoryPanel
             history={history}

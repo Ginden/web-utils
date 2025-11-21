@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
+import type { OutputFormat } from '../types';
+import { formatDefinitions } from '../output/formats';
 
 interface ConfigPanelProps {
   displayType: 'ring' | 'matrix';
@@ -11,7 +13,7 @@ interface ConfigPanelProps {
   onMatrixHeightChange: React.Dispatch<React.SetStateAction<number>>;
   currentColor: string;
   onColorChange: React.Dispatch<React.SetStateAction<string>>;
-  onOutputRequest: (format: import('../types').OutputFormat) => void;
+  onOutputRequest: (format: OutputFormat) => void;
   outputValue: string;
   onSaveToHistory: () => void;
   rotation: number;
@@ -19,6 +21,12 @@ interface ConfigPanelProps {
   showLabels: boolean;
   onShowLabelsChange: React.Dispatch<React.SetStateAction<boolean>>;
   isSummarizing: boolean; // New prop
+  selectedFormat: OutputFormat;
+  onSelectFormat: React.Dispatch<React.SetStateAction<OutputFormat>>;
+  formatConfigs: Record<OutputFormat, Record<string, unknown>>;
+  onFormatConfigsChange: React.Dispatch<
+    React.SetStateAction<Record<OutputFormat, Record<string, unknown>>>
+  >;
 }
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({
@@ -40,9 +48,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   showLabels,
   onShowLabelsChange,
   isSummarizing,
+  selectedFormat,
+  onSelectFormat,
+  formatConfigs,
+  onFormatConfigsChange,
 }) => {
-  const [outputFormat, setOutputFormat] = useState<import('../types').OutputFormat>('rgb');
   const rotationOptions = [0, 45, 90, 135, 180, 225, 270, 315];
+  const activeFormat = formatDefinitions.find((f) => f.id === selectedFormat) ?? formatDefinitions[0];
+  const activeConfig = (formatConfigs[selectedFormat] ?? activeFormat.defaultConfig) as Record<string, unknown>;
 
   return (
     <div className="card-surface stack">
@@ -145,18 +158,35 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
           <label className="label">Format</label>
           <select
             className="control"
-            value={outputFormat}
-            onChange={(e) => setOutputFormat(e.target.value as 'rgb' | 'bgr' | 'arduino')}
+            value={selectedFormat}
+            onChange={(e) => onSelectFormat(e.target.value as OutputFormat)}
           >
-            <option value="rgb">RGB Buffer</option>
-            <option value="bgr">BGR Buffer</option>
-            <option value="arduino">Arduino Code</option>
+            {formatDefinitions.map((fmt) => (
+              <option key={fmt.id} value={fmt.id}>
+                {fmt.label}
+              </option>
+            ))}
           </select>
         </div>
-        <button className="btn ghost" onClick={() => onOutputRequest(outputFormat)}>
+        <button className="btn ghost" onClick={() => onOutputRequest(selectedFormat)}>
           Generate
         </button>
       </div>
+
+      {activeFormat?.description && <p className="muted">{activeFormat.description}</p>}
+      {activeFormat?.renderConfig && (
+        <div className="field">
+          <label className="label">Format options</label>
+          {activeFormat.renderConfig({
+            config: activeConfig,
+            onChange: (cfg) =>
+              onFormatConfigsChange((prev) => ({
+                ...prev,
+                [selectedFormat]: cfg as Record<string, unknown>,
+              })),
+          })}
+        </div>
+      )}
 
       <textarea
         className="code-block"

@@ -27,4 +27,4 @@ export type RingLayoutConfig = {
   pcbRatio: number;
 };
 
-export type OutputFormat = 'rgb' | 'bgr' | 'arduino';
+export type OutputFormat = 'rgb' | 'bgr' | 'gbr' | 'arduino' | 'esphome_static';

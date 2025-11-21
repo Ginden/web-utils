@@ -12,7 +12,7 @@ import {
   sanitizeLedColors,
 } from '../utils/ledState';
 import type { DisplayType, HistoryEntry, OutputFormat, RingLayoutConfig, RgbColor } from '../types';
-import { generateOutput } from '../output/formats';
+import { buildDefaultFormatConfig, generateOutputForFormat } from '../output/formats';
 
 const generateArduinoOutput = (colors: RgbColor[]) => {
   let output = `CRGB leds[] = {\n`;
@@ -39,6 +39,10 @@ export const useLedApp = () => {
     spacingPx: 22,
     pcbRatio: 0.035,
   });
+  const [selectedFormat, setSelectedFormat] = useState<OutputFormat>('rgb');
+  const [formatConfigs, setFormatConfigs] = useState<Record<OutputFormat, Record<string, unknown>>>(
+    () => buildDefaultFormatConfig(),
+  );
 
   // Load from URL hash and localStorage on mount
   useEffect(() => {
@@ -191,9 +195,9 @@ export const useLedApp = () => {
     (format: OutputFormat) => {
       const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
       const safeColors = sanitizeLedColors(ledColors, ledCount);
-      setOutputValue(generateOutput(safeColors, format));
+      setOutputValue(generateOutputForFormat(safeColors, format, formatConfigs));
     },
-    [displayType, ledColors, matrixHeight, matrixWidth, ringLeds],
+    [displayType, formatConfigs, ledColors, matrixHeight, matrixWidth, ringLeds],
   );
 
   return {
@@ -210,6 +214,8 @@ export const useLedApp = () => {
       showLabels,
       isSummarizing,
       ringLayoutConfig,
+      selectedFormat,
+      formatConfigs,
     },
     actions: {
       setDisplayType,
@@ -226,6 +232,8 @@ export const useLedApp = () => {
       loadFromHistory,
       setOutputValue,
       setLedColors,
+      setSelectedFormat,
+      setFormatConfigs,
     },
   };
 };
