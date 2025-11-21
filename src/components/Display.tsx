@@ -1,22 +1,21 @@
 import React from 'react';
+import type { RgbColor } from '../types';
+import { rgbToHashHex } from '../utils/colorUtils'; // Import rgbToHashHex
 
 interface DisplayProps {
   displayType: 'ring' | 'matrix';
   ringLeds: number;
   matrixWidth: number;
   matrixHeight: number;
-  ledColors: string[]; // Array of hex color strings
+  ledColors: RgbColor[]; // Array of RgbColor arrays
   onLedClick: (index: number) => void;
   rotation: number;
   showLabels: boolean;
 }
 
-// Function to get a contrasting color (black or white) for a given hex color
-const getContrastingColor = (hex: string) => {
-  if (!hex) return '#ffffff';
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+// Function to get a contrasting color (black or white) for a given RGB color
+const getContrastingColor = (rgb: RgbColor) => {
+  const [r, g, b] = rgb;
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.5 ? '#000000' : '#ffffff';
 };
@@ -56,7 +55,8 @@ const Display: React.FC<DisplayProps> = ({
             const angleDeg = (i / ringLeds) * 360;
             const x = centerX + ringRadius * Math.cos(angleRad);
             const y = centerY + ringRadius * Math.sin(angleRad);
-            const color = ledColors[i] || '#000000';
+            const color = ledColors[i] || [0, 0, 0]; // Default to black RGB
+            const hexColor = rgbToHashHex(color);
 
             return (
               <g key={`led-group-${i}`} transform={`rotate(${angleDeg}, ${x}, ${y})`}>
@@ -67,7 +67,7 @@ const Display: React.FC<DisplayProps> = ({
                   y={y - ledSize / 2}
                   width={ledSize}
                   height={ledSize}
-                  fill={color}
+                  fill={hexColor}
                   stroke="#333"
                   strokeWidth="1"
                   onClick={() => onLedClick(i)}
@@ -122,7 +122,8 @@ const Display: React.FC<DisplayProps> = ({
               const index = row * matrixWidth + col;
               const x = pcbMargin + col * (cellSize + padding);
               const y = pcbMargin + row * (cellSize + padding);
-              const color = ledColors[index] || '#000000';
+              const color = ledColors[index] || [0, 0, 0]; // Default to black RGB
+              const hexColor = rgbToHashHex(color);
               const textX = x + cellSize / 2;
               const textY = y + cellSize / 2;
 
@@ -135,7 +136,7 @@ const Display: React.FC<DisplayProps> = ({
                     y={y}
                     width={cellSize}
                     height={cellSize}
-                    fill={color}
+                    fill={hexColor}
                     stroke="#333"
                     strokeWidth="1"
                     onClick={() => onLedClick(index)}

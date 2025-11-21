@@ -1,6 +1,7 @@
 import React from 'react';
-import type { HistoryEntry } from '../App'; // Import HistoryEntry as a type
+import type { HistoryEntry } from '../types'; // Import HistoryEntry as a type
 import HistoryPreview from './HistoryPreview';
+import { describeConfiguration } from '../utils/ledState';
 
 interface HistoryPanelProps {
   history: HistoryEntry[];
@@ -29,8 +30,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onLoadHistory, onD
               }}
             >
               <div style={{ flexGrow: 1 }}>
-                <strong>{entry.id}</strong> - <strong>{entry.displayType === 'ring' ? 'Ring' : 'Matrix'}</strong> -{' '}
-                {entry.displayType === 'ring' ? `${entry.ringLeds} LEDs` : `${entry.matrixWidth}x${entry.matrixHeight}`}
+                <strong>{describeConfiguration(entry)}</strong>
               </div>
               {entry.summary && (
                 <div style={{ fontSize: '0.9em', color: '#666', marginTop: '5px', flexGrow: 1 }}>{entry.summary}</div>

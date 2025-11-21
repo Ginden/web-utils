@@ -19,8 +19,6 @@ interface ConfigPanelProps {
   showLabels: boolean;
   onShowLabelsChange: React.Dispatch<React.SetStateAction<boolean>>;
   isSummarizing: boolean; // New prop
-  currentId: string;
-  onCurrentIdChange: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({
@@ -42,8 +40,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   showLabels,
   onShowLabelsChange,
   isSummarizing,
-  currentId,
-  onCurrentIdChange,
 }) => {
   const [outputFormat, setOutputFormat] = useState<'rgb' | 'bgr' | 'arduino'>('rgb');
   const rotationOptions = [0, 45, 90, 135, 180, 225, 270, 315];
@@ -51,12 +47,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
       <h3>Display Configuration</h3>
-      <div>
-        <label>
-          ID:
-          <input type="text" value={currentId} onChange={(e) => onCurrentIdChange(e.target.value)} />
-        </label>
-      </div>
       <div>
         <label>
           Display Type:
