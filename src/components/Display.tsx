@@ -69,7 +69,11 @@ const Display: React.FC<DisplayProps> = ({
 
     const effectiveSize = size;
     const center = effectiveSize / 2;
-    return { ledSize, ringRadius, pcbWidth, size: effectiveSize, centerX: center, centerY: center };
+    const outerRadius = ringRadius + Math.max(pcbWidth / 2, ledSize / 2);
+    const margin = 8;
+    const scale = Math.min(2.5, Math.max(0.1, (effectiveSize / 2 - margin) / outerRadius));
+
+    return { ledSize, ringRadius, pcbWidth, size: effectiveSize, centerX: center, centerY: center, scale };
   }, [dimensions, ringLeds, ringLayoutConfig]);
 
   const matrixLayout = useMemo(() => {
@@ -89,7 +93,7 @@ const Display: React.FC<DisplayProps> = ({
   }, [dimensions, matrixHeight, matrixWidth]);
 
   const renderRing = () => {
-    const { ledSize, ringRadius, pcbWidth, size, centerX, centerY } = ringLayout;
+    const { ledSize, ringRadius, pcbWidth, size, centerX, centerY, scale } = ringLayout;
 
     return (
       <svg
@@ -98,56 +102,58 @@ const Display: React.FC<DisplayProps> = ({
         viewBox={`0 0 ${size} ${size}`}
         preserveAspectRatio="xMidYMid meet"
       >
-        <g transform={`rotate(${rotation}, ${centerX}, ${centerY})`}>
-          <circle
-            cx={centerX}
-            cy={centerY}
-            r={ringRadius}
-            fill="none"
-            stroke="#555" // PCB color
-            strokeWidth={pcbWidth}
-          />
-          {Array.from({ length: ringLeds }).map((_, i) => {
-            const angleRad = (i / ringLeds) * 2 * Math.PI - Math.PI / 2;
-            const angleDeg = (i / ringLeds) * 360;
-            const x = centerX + ringRadius * Math.cos(angleRad);
-            const y = centerY + ringRadius * Math.sin(angleRad);
-            const color = ledColors[i] || [0, 0, 0]; // Default to black RGB
-            const hexColor = rgbToHashHex(color);
+        <g transform={`translate(${centerX}, ${centerY}) scale(${scale}) translate(${-centerX}, ${-centerY})`}>
+          <g transform={`rotate(${rotation}, ${centerX}, ${centerY})`}>
+            <circle
+              cx={centerX}
+              cy={centerY}
+              r={ringRadius}
+              fill="none"
+              stroke="#555" // PCB color
+              strokeWidth={pcbWidth}
+            />
+            {Array.from({ length: ringLeds }).map((_, i) => {
+              const angleRad = (i / ringLeds) * 2 * Math.PI - Math.PI / 2;
+              const angleDeg = (i / ringLeds) * 360;
+              const x = centerX + ringRadius * Math.cos(angleRad);
+              const y = centerY + ringRadius * Math.sin(angleRad);
+              const color = ledColors[i] || [0, 0, 0]; // Default to black RGB
+              const hexColor = rgbToHashHex(color);
 
-            return (
-              <g key={`led-group-${i}`} transform={`rotate(${angleDeg}, ${x}, ${y})`}>
-                <rect
-                  key={`led-${i}`}
-                  id={`led-${i}`}
-                  x={x - ledSize / 2}
-                  y={y - ledSize / 2}
-                  width={ledSize}
-                  height={ledSize}
-                  fill={hexColor}
-                  stroke="#333"
-                  strokeWidth={Math.max(1, ledSize * 0.05)}
-                  onClick={() => onLedClick(i)}
-                  style={{ cursor: 'pointer' }}
-                  rx={Math.max(2, ledSize * 0.18)}
-                />
-                {showLabels && (
-                  <text
-                    x={x}
-                    y={y}
-                    dy=".3em"
-                    textAnchor="middle"
-                    fill={getContrastingColor(color)}
-                    pointerEvents="none"
-                    fontSize="10"
-                    transform={`rotate(${-angleDeg - rotation}, ${x}, ${y})`}
-                  >
-                    {i}
-                  </text>
-                )}
-              </g>
-            );
-          })}
+              return (
+                <g key={`led-group-${i}`} transform={`rotate(${angleDeg}, ${x}, ${y})`}>
+                  <rect
+                    key={`led-${i}`}
+                    id={`led-${i}`}
+                    x={x - ledSize / 2}
+                    y={y - ledSize / 2}
+                    width={ledSize}
+                    height={ledSize}
+                    fill={hexColor}
+                    stroke="#333"
+                    strokeWidth={Math.max(1, ledSize * 0.05)}
+                    onClick={() => onLedClick(i)}
+                    style={{ cursor: 'pointer' }}
+                    rx={Math.max(2, ledSize * 0.18)}
+                  />
+                  {showLabels && (
+                    <text
+                      x={x}
+                      y={y}
+                      dy=".3em"
+                      textAnchor="middle"
+                      fill={getContrastingColor(color)}
+                      pointerEvents="none"
+                      fontSize="10"
+                      transform={`rotate(${-angleDeg - rotation}, ${x}, ${y})`}
+                    >
+                      {i}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          </g>
         </g>
       </svg>
     );
