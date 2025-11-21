@@ -8,20 +8,20 @@ This is a React-based web application built with Vite and TypeScript. It allows 
 
 ### Key Technologies
 
-*   **Frontend:** React, TypeScript
-*   **Build Tool:** Vite
-*   **Styling:** CSS
-*   **Linting:** ESLint
+- **Frontend:** React, TypeScript
+- **Build Tool:** Vite
+- **Styling:** CSS
+- **Linting:** ESLint
 
 ### Architecture
 
 The application is structured as a single-page application (SPA).
 
-*   `src/`: Contains all the source code for the application.
-    *   `main.tsx`: The entry point of the application.
-    *   `App.tsx`: The main application component that manages the state and logic.
-    *   `components/`: Contains the React components for different parts of the UI (Display, ConfigPanel, HistoryPanel).
-    *   `api/`: Contains the API for the summarizer.
+- `src/`: Contains all the source code for the application.
+  - `main.tsx`: The entry point of the application.
+  - `App.tsx`: The main application component that manages the state and logic.
+  - `components/`: Contains the React components for different parts of the UI (Display, ConfigPanel, HistoryPanel).
+  - `api/`: Contains the API for the summarizer.
 
 ## Building and Running
 
@@ -67,7 +67,7 @@ npm run preview
 
 ## Development Conventions
 
-*   **Styling:** Standard CSS is used for styling.
-*   **State Management:** Component-level state is managed using React hooks (`useState`, `useEffect`).
-*   **Code Style:** The code style is enforced by ESLint. The configuration can be found in `eslint.config.js`.
-*   **History:** The application uses `localStorage` to persist the history of LED configurations.
+- **Styling:** Standard CSS is used for styling.
+- **State Management:** Component-level state is managed using React hooks (`useState`, `useEffect`).
+- **Code Style:** The code style is enforced by ESLint. The configuration can be found in `eslint.config.js`.
+- **History:** The application uses `localStorage` to persist the history of LED configurations.

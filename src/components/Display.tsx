@@ -82,7 +82,7 @@ const Display: React.FC<DisplayProps> = ({
                     fill={getContrastingColor(color)}
                     pointerEvents="none"
                     fontSize="10"
-                    transform={`rotate(${-angleDeg-rotation}, ${x}, ${y})`}
+                    transform={`rotate(${-angleDeg - rotation}, ${x}, ${y})`}
                   >
                     {i}
                   </text>
@@ -157,7 +157,7 @@ const Display: React.FC<DisplayProps> = ({
                   )}
                 </g>
               );
-            })
+            }),
           )}
         </g>
       </svg>
@@ -172,6 +172,3 @@ const Display: React.FC<DisplayProps> = ({
 };
 
 export default Display;
-
-
-

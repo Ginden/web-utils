@@ -43,7 +43,15 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({ entry }) => {
     const containerHeight = matrixHeight * (ledSize + gap);
 
     return (
-      <div style={{ width: containerWidth, height: containerHeight, display: 'grid', gridTemplateColumns: `repeat(${matrixWidth}, ${ledSize}px)`, gap: `${gap}px` }}>
+      <div
+        style={{
+          width: containerWidth,
+          height: containerHeight,
+          display: 'grid',
+          gridTemplateColumns: `repeat(${matrixWidth}, ${ledSize}px)`,
+          gap: `${gap}px`,
+        }}
+      >
         {ledColors.map((color, index) => (
           <div
             key={index}

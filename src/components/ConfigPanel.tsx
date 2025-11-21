@@ -20,7 +20,7 @@ interface ConfigPanelProps {
   onShowLabelsChange: React.Dispatch<React.SetStateAction<boolean>>;
   isSummarizing: boolean; // New prop
   currentId: string;
-    onCurrentIdChange: React.Dispatch<React.SetStateAction<string>>;
+  onCurrentIdChange: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({
@@ -43,7 +43,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   onShowLabelsChange,
   isSummarizing,
   currentId,
-    onCurrentIdChange,
+  onCurrentIdChange,
 }) => {
   const [outputFormat, setOutputFormat] = useState<'rgb' | 'bgr' | 'arduino'>('rgb');
   const rotationOptions = [0, 45, 90, 135, 180, 225, 270, 315];
@@ -54,11 +54,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
       <div>
         <label>
           ID:
-          <input
-            type="text"
-            value={currentId}
-            onChange={(e) => onCurrentIdChange(e.target.value)}
-          />
+          <input type="text" value={currentId} onChange={(e) => onCurrentIdChange(e.target.value)} />
         </label>
       </div>
       <div>
@@ -115,8 +111,10 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
         <label>
           Rotation:
           <select value={rotation} onChange={(e) => onRotationChange(parseInt(e.target.value, 10))}>
-            {rotationOptions.map(angle => (
-              <option key={angle} value={angle}>{angle}°</option>
+            {rotationOptions.map((angle) => (
+              <option key={angle} value={angle}>
+                {angle}°
+              </option>
             ))}
           </select>
         </label>
@@ -125,11 +123,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
       <div style={{ marginTop: '10px' }}>
         <label>
           Show Labels:
-          <input
-            type="checkbox"
-            checked={showLabels}
-            onChange={(e) => onShowLabelsChange(e.target.checked)}
-          />
+          <input type="checkbox" checked={showLabels} onChange={(e) => onShowLabelsChange(e.target.checked)} />
         </label>
       </div>
 
@@ -137,14 +131,10 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
       <div>
         <label>
           Current Color:
-          <input
-            type="color"
-            value={currentColor}
-            onChange={(e) => onColorChange(e.target.value)}
-          />
+          <input type="color" value={currentColor} onChange={(e) => onColorChange(e.target.value)} />
         </label>
       </div>
-      
+
       <button onClick={onSaveToHistory} style={{ marginTop: '20px', padding: '8px 12px' }} disabled={isSummarizing}>
         {isSummarizing ? 'Saving...' : 'Save to History'}
       </button>
@@ -175,5 +165,3 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
 };
 
 export default ConfigPanel;
-
-
