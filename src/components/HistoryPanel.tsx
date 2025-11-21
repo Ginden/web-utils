@@ -1,13 +1,5 @@
 import React from 'react';
-
-interface HistoryEntry {
-  displayType: 'ring' | 'matrix';
-  ringLeds: number;
-  matrixWidth: number;
-  matrixHeight: number;
-  ledColors?: string[]; // Make ledColors optional for backward compatibility
-  timestamp: string;
-}
+import type { HistoryEntry } from '../App'; // Import HistoryEntry as a type
 
 interface HistoryPanelProps {
   history: HistoryEntry[];
@@ -31,7 +23,8 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onLoadHistory, onD
                   ? `${entry.ringLeds} LEDs`
                   : `${entry.matrixWidth}x${entry.matrixHeight}`}
               </div>
-              <div style={{ fontSize: '0.8em', color: '#888' }}>
+              {entry.summary && <div style={{ fontSize: '0.9em', color: '#666', marginTop: '5px' }}>{entry.summary}</div>}
+              <div style={{ fontSize: '0.8em', color: '#888', marginTop: '5px' }}>
                 {new Date(entry.timestamp).toLocaleString()}
               </div>
               <button onClick={() => onLoadHistory(entry)} style={{ marginTop: '5px' }}>
@@ -49,5 +42,6 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onLoadHistory, onD
 };
 
 export default HistoryPanel;
+
 
 

@@ -14,6 +14,11 @@ interface ConfigPanelProps {
   onOutputRequest: (format: 'rgb' | 'bgr' | 'arduino') => void;
   outputValue: string;
   onSaveToHistory: () => void;
+  rotation: number;
+  onRotationChange: React.Dispatch<React.SetStateAction<number>>;
+  showLabels: boolean;
+  onShowLabelsChange: React.Dispatch<React.SetStateAction<boolean>>;
+  isSummarizing: boolean; // New prop
 }
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({
@@ -30,8 +35,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   onOutputRequest,
   outputValue,
   onSaveToHistory,
+  rotation,
+  onRotationChange,
+  showLabels,
+  onShowLabelsChange,
+  isSummarizing,
 }) => {
   const [outputFormat, setOutputFormat] = useState<'rgb' | 'bgr' | 'arduino'>('rgb');
+  const rotationOptions = [0, 45, 90, 135, 180, 225, 270, 315];
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
@@ -86,6 +97,28 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
         </div>
       )}
 
+      <div style={{ marginTop: '10px' }}>
+        <label>
+          Rotation:
+          <select value={rotation} onChange={(e) => onRotationChange(parseInt(e.target.value, 10))}>
+            {rotationOptions.map(angle => (
+              <option key={angle} value={angle}>{angle}°</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div style={{ marginTop: '10px' }}>
+        <label>
+          Show Labels:
+          <input
+            type="checkbox"
+            checked={showLabels}
+            onChange={(e) => onShowLabelsChange(e.target.checked)}
+          />
+        </label>
+      </div>
+
       <h3 style={{ marginTop: '20px' }}>Color Picker</h3>
       <div>
         <label>
@@ -98,8 +131,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
         </label>
       </div>
       
-      <button onClick={onSaveToHistory} style={{ marginTop: '20px', padding: '8px 12px' }}>
-        Save to History
+      <button onClick={onSaveToHistory} style={{ marginTop: '20px', padding: '8px 12px' }} disabled={isSummarizing}>
+        {isSummarizing ? 'Saving...' : 'Save to History'}
       </button>
 
       <h3 style={{ marginTop: '20px' }}>Output Options</h3>
@@ -128,3 +161,5 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
 };
 
 export default ConfigPanel;
+
+

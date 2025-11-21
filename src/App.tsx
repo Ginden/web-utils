@@ -3,16 +3,50 @@ import Display from './components/Display';
 import ConfigPanel from './components/ConfigPanel';
 import HistoryPanel from './components/HistoryPanel';
 import './App.css';
+import { getSummary } from './api/SummarizerAPI'; // Import the summarizer API
+
+// Define the HistoryEntry interface to include the optional summary
+export interface HistoryEntry { // Export HistoryEntry
+  displayType: 'ring' | 'matrix';
+  ringLeds: number;
+  matrixWidth: number;
+  matrixHeight: number;
+  ledColors: string[];
+  rotation: number;
+  showLabels: boolean;
+  timestamp: string;
+  summary?: string; // Add optional summary field
+}
 
 const App: React.FC = () => {
   const [displayType, setDisplayType] = useState<'ring' | 'matrix'>('ring');
   const [ringLeds, setRingLeds] = useState<number>(24);
   const [matrixWidth, setMatrixWidth] = useState<number>(8);
   const [matrixHeight, setMatrixHeight] = useState<number>(8);
-  const [ledColors, setLedColors] = useState<string[]>(Array(24).fill('#000000')); // Default to black
+  const [ledColors, setLedColors] = useState<string[]>(Array(24).fill('#000000'));
   const [currentColor, setCurrentColor] = useState<string>('#FF0000');
   const [outputValue, setOutputValue] = useState<string>('');
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]); // Use the defined interface
+  const [rotation, setRotation] = useState<number>(0);
+  const [showLabels, setShowLabels] = useState<boolean>(true);
+  const [isSummarizing, setIsSummarizing] = useState<boolean>(false); // New state for summarizer feedback
+
+  // Helper to generate Arduino output for summarization
+  const generateArduinoOutput = (colors: string[]) => {
+    const hexToRgbForSummary = (hex: string) => {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return { r, g, b };
+    };
+    let output = `CRGB leds[] = {\n`;
+    output += colors.map(hex => {
+      const { r, g, b } = hexToRgbForSummary(hex);
+      return `  CRGB(${r}, ${g}, ${b})`;
+    }).join(',\n');
+    output += `\n};`;
+    return output;
+  };
 
   // Load from URL hash and localStorage on mount
   useEffect(() => {
@@ -36,6 +70,12 @@ const App: React.FC = () => {
         setMatrixWidth(parseInt(params.get('width') || '8', 10));
         setMatrixHeight(parseInt(params.get('height') || '8', 10));
       }
+      setRotation(parseInt(params.get('rotation') || '0', 10));
+      setShowLabels(params.get('labels') === 'true');
+      const colors = params.get('colors');
+      if (colors) {
+        setLedColors(colors.split(',').map(c => `#${c}`));
+      }
     }
   }, []);
   
@@ -49,11 +89,14 @@ const App: React.FC = () => {
       params.set('width', matrixWidth.toString());
       params.set('height', matrixHeight.toString());
     }
+    params.set('rotation', rotation.toString());
+    params.set('labels', String(showLabels));
+    params.set('colors', ledColors.map(c => c.slice(1)).join(','));
     const hash = params.toString();
     if (window.location.hash !== `#${hash}`) {
         window.location.hash = hash
     }
-  }, [displayType, ringLeds, matrixWidth, matrixHeight]);
+  }, [displayType, ringLeds, matrixWidth, matrixHeight, rotation, showLabels, ledColors]);
 
 
   // Re-initialize ledColors when display size changes
@@ -70,18 +113,26 @@ const App: React.FC = () => {
     });
   };
   
-  const handleSaveToHistory = () => {
-    const newHistoryEntry = {
+  const handleSaveToHistory = async () => { // Made async
+    setIsSummarizing(true);
+    const arduinoOutput = generateArduinoOutput(ledColors);
+    const summary = await getSummary(arduinoOutput); // Get summary
+
+    const newHistoryEntry: HistoryEntry = {
       displayType,
       ringLeds,
       matrixWidth,
       matrixHeight,
-      ledColors, // Include ledColors in history
+      ledColors,
+      rotation,
+      showLabels,
       timestamp: new Date().toISOString(),
+      summary, // Include summary
     };
     const updatedHistory = [newHistoryEntry, ...history];
     setHistory(updatedHistory);
     localStorage.setItem('led_history', JSON.stringify(updatedHistory));
+    setIsSummarizing(false);
   }
 
   const handleDeleteFromHistory = (timestamp: string) => {
@@ -90,13 +141,15 @@ const App: React.FC = () => {
     localStorage.setItem('led_history', JSON.stringify(updatedHistory));
   };
 
-  const loadFromHistory = (entry: any) => {
+  const loadFromHistory = (entry: HistoryEntry) => { // Use HistoryEntry interface
     setDisplayType(entry.displayType);
     setRingLeds(entry.ringLeds);
     setMatrixWidth(entry.matrixWidth);
     setMatrixHeight(entry.matrixHeight);
+    setRotation(entry.rotation || 0);
+    setShowLabels(entry.showLabels === undefined ? true : entry.showLabels);
     if (entry.ledColors) {
-      setLedColors(entry.ledColors); // Restore ledColors from history
+      setLedColors(entry.ledColors);
     }
   };
 
@@ -144,6 +197,8 @@ const App: React.FC = () => {
                         matrixHeight={matrixHeight}
                         ledColors={ledColors}
                         onLedClick={handleLedClick}
+                        rotation={rotation}
+                        showLabels={showLabels}
                     />
                 </div>
               </div>
@@ -163,6 +218,11 @@ const App: React.FC = () => {
                 onOutputRequest={handleOutputRequest}
                 outputValue={outputValue}
                 onSaveToHistory={handleSaveToHistory}
+                rotation={rotation}
+                onRotationChange={setRotation}
+                showLabels={showLabels}
+                onShowLabelsChange={setShowLabels}
+                isSummarizing={isSummarizing} // Pass isSummarizing to ConfigPanel
               />
               <HistoryPanel history={history} onLoadHistory={loadFromHistory} onDeleteHistory={handleDeleteFromHistory} />
             </div>
