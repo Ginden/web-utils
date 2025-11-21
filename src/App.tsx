@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Display from './components/Display';
 import ConfigPanel from './components/ConfigPanel';
 import HistoryPanel from './components/HistoryPanel';
@@ -6,6 +6,23 @@ import './App.css';
 import { useLedApp } from './hooks/useLedApp';
 
 const App: React.FC = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const stored = localStorage.getItem('theme');
+    if (stored === 'light' || stored === 'dark') {
+      return stored;
+    }
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+      ? 'light'
+      : 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+
   const {
     state: {
       displayType,
@@ -38,14 +55,27 @@ const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      <header style={{ padding: '1rem', borderBottom: '1px solid #ccc', textAlign: 'center' }}>
-        <h1>WS281x LED Controller</h1>
+      <header className="top-bar">
+        <div className="brand">
+          <div className="brand-mark">PX</div>
+          <div className="brand-text">
+            <h1>Pixel Select</h1>
+            <p>WS281x LED Controller</p>
+          </div>
+        </div>
+        <button className="pill-action" onClick={toggleTheme} aria-label="Toggle color theme">
+          {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+        </button>
       </header>
       <div className="main-content">
-        <div className="left-panel" style={{ display: 'flex', flexDirection: 'column' }}>
-          <h2>Display Visualization</h2>
-          <div style={{ flexGrow: 1, position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+        <div className="panel display-panel card-surface">
+          <div className="section-heading">
+            <div className="eyebrow">Visualizer</div>
+            <h2>Display</h2>
+            <p>Interact with the LEDs and see the rotation/labels update live.</p>
+          </div>
+          <div className="display-canvas">
+            <div className="display-shell">
               <Display
                 displayType={displayType}
                 ringLeds={ringLeds}
@@ -59,7 +89,7 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="right-panel">
+        <div className="panel sidebar">
           <ConfigPanel
             displayType={displayType}
             ringLeds={ringLeds}

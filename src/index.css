@@ -1,3 +1,35 @@
+:root {
+  --font: 'Fira Sans', 'Ubuntu', 'Segoe UI', 'Helvetica Neue', sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+  --shadow-soft: 0 14px 35px rgba(0, 0, 0, 0.14);
+}
+
+:root[data-theme='light'] {
+  --bg: #edf1f7;
+  --surface: #ffffff;
+  --surface-muted: #f5f7fb;
+  --border: #dfe4ef;
+  --text: #0f162c;
+  --muted: #6c7385;
+  --accent: #5c7cfa;
+  --accent-strong: #3b5bdb;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0c0f1a;
+  --surface: #181c2c;
+  --surface-muted: #101221;
+  --border: #242a3d;
+  --text: #e8ecf9;
+  --muted: #9aa3ba;
+  --accent: #7dc4ff;
+  --accent-strong: #4fa0ff;
+}
+
 *,
 *::before,
 *::after {
@@ -7,9 +39,12 @@
 body {
   margin: 0;
   min-height: 100vh;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  transition: background 180ms ease, color 180ms ease;
 }
 
 #root {
   min-height: 100vh;
-  height: 100vh;
 }

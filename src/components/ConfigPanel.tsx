@@ -45,109 +45,123 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   const rotationOptions = [0, 45, 90, 135, 180, 225, 270, 315];
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h3>Display Configuration</h3>
-      <div>
-        <label>
-          Display Type:
-          <select value={displayType} onChange={(e) => onDisplayTypeChange(e.target.value as 'ring' | 'matrix')}>
-            <option value="ring">Ring</option>
-            <option value="matrix">Matrix</option>
-          </select>
-        </label>
+    <div className="card-surface stack">
+      <div className="section-heading compact">
+        <div className="eyebrow">Configuration</div>
+        <h3>Display settings</h3>
+      </div>
+
+      <div className="field">
+        <label className="label">Display Type</label>
+        <select
+          className="control"
+          value={displayType}
+          onChange={(e) => onDisplayTypeChange(e.target.value as 'ring' | 'matrix')}
+        >
+          <option value="ring">Ring</option>
+          <option value="matrix">Matrix</option>
+        </select>
       </div>
 
       {displayType === 'ring' && (
-        <div style={{ marginTop: '10px' }}>
-          <label>
-            Number of LEDs:
-            <input
-              type="number"
-              min="1"
-              value={ringLeds}
-              onChange={(e) => onRingLedsChange(parseInt(e.target.value, 10))}
-            />
-          </label>
+        <div className="field">
+          <label className="label">Number of LEDs</label>
+          <input
+            className="control"
+            type="number"
+            min="1"
+            value={ringLeds}
+            onChange={(e) => onRingLedsChange(parseInt(e.target.value, 10))}
+          />
         </div>
       )}
 
       {displayType === 'matrix' && (
-        <div style={{ marginTop: '10px' }}>
+        <div className="field grid two">
           <div>
-            <label>
-              Matrix Width:
-              <input
-                type="number"
-                min="1"
-                value={matrixWidth}
-                onChange={(e) => onMatrixWidthChange(parseInt(e.target.value, 10))}
-              />
-            </label>
-            <label style={{ marginLeft: '10px' }}>
-              Matrix Height:
-              <input
-                type="number"
-                min="1"
-                value={matrixHeight}
-                onChange={(e) => onMatrixHeightChange(parseInt(e.target.value, 10))}
-              />
-            </label>
+            <label className="label">Matrix Width</label>
+            <input
+              className="control"
+              type="number"
+              min="1"
+              value={matrixWidth}
+              onChange={(e) => onMatrixWidthChange(parseInt(e.target.value, 10))}
+            />
           </div>
-          <p>Total LEDs: {matrixWidth * matrixHeight}</p>
+          <div>
+            <label className="label">Matrix Height</label>
+            <input
+              className="control"
+              type="number"
+              min="1"
+              value={matrixHeight}
+              onChange={(e) => onMatrixHeightChange(parseInt(e.target.value, 10))}
+            />
+          </div>
+          <p className="muted span-two">Total LEDs: {matrixWidth * matrixHeight}</p>
         </div>
       )}
 
-      <div style={{ marginTop: '10px' }}>
-        <label>
-          Rotation:
-          <select value={rotation} onChange={(e) => onRotationChange(parseInt(e.target.value, 10))}>
+      <div className="grid two">
+        <div className="field">
+          <label className="label">Rotation</label>
+          <select
+            className="control"
+            value={rotation}
+            onChange={(e) => onRotationChange(parseInt(e.target.value, 10))}
+          >
             {rotationOptions.map((angle) => (
               <option key={angle} value={angle}>
                 {angle}°
               </option>
             ))}
           </select>
-        </label>
-      </div>
-
-      <div style={{ marginTop: '10px' }}>
-        <label>
-          Show Labels:
+        </div>
+        <label className="field checkbox">
           <input type="checkbox" checked={showLabels} onChange={(e) => onShowLabelsChange(e.target.checked)} />
+          <span>Show labels</span>
         </label>
       </div>
 
-      <h3 style={{ marginTop: '20px' }}>Color Picker</h3>
-      <div>
-        <label>
-          Current Color:
-          <input type="color" value={currentColor} onChange={(e) => onColorChange(e.target.value)} />
-        </label>
+      <div className="field">
+        <label className="label">Current Color</label>
+        <div className="color-row">
+          <input className="control color" type="color" value={currentColor} onChange={(e) => onColorChange(e.target.value)} />
+          <div className="color-value">{currentColor.toUpperCase()}</div>
+        </div>
       </div>
 
-      <button onClick={onSaveToHistory} style={{ marginTop: '20px', padding: '8px 12px' }} disabled={isSummarizing}>
-        {isSummarizing ? 'Saving...' : 'Save to History'}
+      <button className="btn primary" onClick={onSaveToHistory} disabled={isSummarizing}>
+        {isSummarizing ? 'Saving…' : 'Save to history'}
       </button>
 
-      <h3 style={{ marginTop: '20px' }}>Output Options</h3>
-      <div>
-        <label>
-          Output Format:
-          <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value as 'rgb' | 'bgr' | 'arduino')}>
+      <div className="section-heading compact space-top">
+        <div className="eyebrow">Output</div>
+        <h3>Export formats</h3>
+      </div>
+
+      <div className="grid two align-end">
+        <div className="field">
+          <label className="label">Format</label>
+          <select
+            className="control"
+            value={outputFormat}
+            onChange={(e) => setOutputFormat(e.target.value as 'rgb' | 'bgr' | 'arduino')}
+          >
             <option value="rgb">RGB Buffer</option>
             <option value="bgr">BGR Buffer</option>
             <option value="arduino">Arduino Code</option>
           </select>
-        </label>
-        <button onClick={() => onOutputRequest(outputFormat)} style={{ marginLeft: '10px', padding: '8px 12px' }}>
-          Generate Output
+        </div>
+        <button className="btn ghost" onClick={() => onOutputRequest(outputFormat)}>
+          Generate
         </button>
       </div>
 
       <textarea
+        className="code-block"
         readOnly
         value={outputValue}
-        style={{ width: '100%', height: '150px', marginTop: '10px', fontFamily: 'monospace' }}
         placeholder="Generated output will appear here..."
       />
     </div>
