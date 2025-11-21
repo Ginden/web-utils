@@ -51,7 +51,6 @@ const App: React.FC = () => {
       handleDeleteFromHistory,
       handleOutputRequest,
       loadFromHistory,
-      setRingLayoutConfig,
     },
   } = useLedApp();
 
@@ -112,8 +111,6 @@ const App: React.FC = () => {
             showLabels={showLabels}
             onShowLabelsChange={setShowLabels}
             isSummarizing={isSummarizing}
-            ringLayoutConfig={ringLayoutConfig}
-            onRingLayoutConfigChange={setRingLayoutConfig}
           />
           <HistoryPanel
             history={history}

@@ -34,9 +34,9 @@ export const useLedApp = () => {
   const [rotation, setRotation] = useState<number>(0);
   const [showLabels, setShowLabels] = useState<boolean>(true);
   const [isSummarizing, setIsSummarizing] = useState<boolean>(false);
-  const [ringLayoutConfig, setRingLayoutConfig] = useState<RingLayoutConfig>({
+  const [ringLayoutConfig] = useState<RingLayoutConfig>({
     spacingPx: 22,
-    pcbRatio: 0.06,
+    pcbRatio: 0.035,
   });
 
   // Load from URL hash and localStorage on mount
@@ -234,7 +234,6 @@ export const useLedApp = () => {
       setCurrentColor,
       setRotation,
       setShowLabels,
-      setRingLayoutConfig,
       handleLedClick,
       handleSaveToHistory,
       handleDeleteFromHistory,

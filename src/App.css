@@ -344,18 +344,6 @@
   grid-column: span 2;
 }
 
-.tuning {
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-md);
-  padding: 10px 12px;
-  background: color-mix(in srgb, var(--surface-muted) 80%, transparent);
-}
-
-.tuning-toggle {
-  cursor: pointer;
-  font-weight: 600;
-}
-
 @media (max-width: 1024px) {
   .main-content {
     flex-direction: column;
