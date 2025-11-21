@@ -11,7 +11,7 @@ interface ConfigPanelProps {
   onMatrixHeightChange: React.Dispatch<React.SetStateAction<number>>;
   currentColor: string;
   onColorChange: React.Dispatch<React.SetStateAction<string>>;
-  onOutputRequest: (format: 'rgb' | 'bgr' | 'arduino') => void;
+  onOutputRequest: (format: import('../types').OutputFormat) => void;
   outputValue: string;
   onSaveToHistory: () => void;
   rotation: number;
@@ -41,7 +41,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   onShowLabelsChange,
   isSummarizing,
 }) => {
-  const [outputFormat, setOutputFormat] = useState<'rgb' | 'bgr' | 'arduino'>('rgb');
+  const [outputFormat, setOutputFormat] = useState<import('../types').OutputFormat>('rgb');
   const rotationOptions = [0, 45, 90, 135, 180, 225, 270, 315];
 
   return (

@@ -26,3 +26,5 @@ export type RingLayoutConfig = {
   /** PCB thickness ratio relative to ring size. */
   pcbRatio: number;
 };
+
+export type OutputFormat = 'rgb' | 'bgr' | 'arduino';

@@ -71,7 +71,7 @@ const Display: React.FC<DisplayProps> = ({
     const center = effectiveSize / 2;
     const outerRadius = ringRadius + Math.max(pcbWidth / 2, ledSize / 2);
     const margin = 8;
-    const scale = Math.min(2.5, Math.max(0.1, (effectiveSize / 2 - margin) / outerRadius));
+    const scale = Math.min(8, Math.max(0.6, (effectiveSize / 2 - margin) / outerRadius));
 
     return { ledSize, ringRadius, pcbWidth, size: effectiveSize, centerX: center, centerY: center, scale };
   }, [dimensions, ringLeds, ringLayoutConfig]);

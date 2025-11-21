@@ -11,7 +11,8 @@ import {
   parseStoredHistory,
   sanitizeLedColors,
 } from '../utils/ledState';
-import type { DisplayType, HistoryEntry, RingLayoutConfig, RgbColor } from '../types';
+import type { DisplayType, HistoryEntry, OutputFormat, RingLayoutConfig, RgbColor } from '../types';
+import { generateOutput } from '../output/formats';
 
 const generateArduinoOutput = (colors: RgbColor[]) => {
   let output = `CRGB leds[] = {\n`;
@@ -187,26 +188,10 @@ export const useLedApp = () => {
   }, []);
 
   const handleOutputRequest = useCallback(
-    (format: 'rgb' | 'bgr' | 'arduino') => {
-      let output = '';
+    (format: OutputFormat) => {
       const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
       const safeColors = sanitizeLedColors(ledColors, ledCount);
-      switch (format) {
-        case 'rgb':
-          output = safeColors.map(([r, g, b]) => `${r}, ${g}, ${b}`).join(', ');
-          output = `[${output}]`;
-          break;
-        case 'bgr':
-          output = safeColors.map(([r, g, b]) => `${b}, ${g}, ${r}`).join(', ');
-          output = `[${output}]`;
-          break;
-        case 'arduino':
-          output = `CRGB leds[] = {\n` + safeColors.map(([r, g, b]) => `  CRGB(${r}, ${g}, ${b})`).join(',\n') + `\n};`;
-          break;
-        default:
-          output = 'Unsupported format';
-      }
-      setOutputValue(output);
+      setOutputValue(generateOutput(safeColors, format));
     },
     [displayType, ledColors, matrixHeight, matrixWidth, ringLeds],
   );
