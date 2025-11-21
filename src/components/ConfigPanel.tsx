@@ -5,13 +5,15 @@ interface ConfigPanelProps {
   ringLeds: number;
   matrixWidth: number;
   matrixHeight: number;
-  onDisplayTypeChange: (type: 'ring' | 'matrix') => void;
-  onRingLedsChange: (leds: number) => void;
-  onMatrixWidthChange: (width: number) => void;
-  onMatrixHeightChange: (height: number) => void;
+  onDisplayTypeChange: React.Dispatch<React.SetStateAction<'ring' | 'matrix'>>;
+  onRingLedsChange: React.Dispatch<React.SetStateAction<number>>;
+  onMatrixWidthChange: React.Dispatch<React.SetStateAction<number>>;
+  onMatrixHeightChange: React.Dispatch<React.SetStateAction<number>>;
   currentColor: string;
-  onColorChange: (color: string) => void;
+  onColorChange: React.Dispatch<React.SetStateAction<string>>;
   onOutputRequest: (format: 'rgb' | 'bgr' | 'arduino') => void;
+  outputValue: string;
+  onSaveToHistory: () => void;
 }
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({
@@ -26,6 +28,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   currentColor,
   onColorChange,
   onOutputRequest,
+  outputValue,
+  onSaveToHistory,
 }) => {
   const [outputFormat, setOutputFormat] = useState<'rgb' | 'bgr' | 'arduino'>('rgb');
 
@@ -58,24 +62,27 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
 
       {displayType === 'matrix' && (
         <div style={{ marginTop: '10px' }}>
-          <label>
-            Matrix Width:
-            <input
-              type="number"
-              min="1"
-              value={matrixWidth}
-              onChange={(e) => onMatrixWidthChange(parseInt(e.target.value, 10))}
-            />
-          </label>
-          <label style={{ marginLeft: '10px' }}>
-            Matrix Height:
-            <input
-              type="number"
-              min="1"
-              value={matrixHeight}
-              onChange={(e) => onMatrixHeightChange(parseInt(e.target.value, 10))}
-            />
-          </label>
+          <div>
+            <label>
+              Matrix Width:
+              <input
+                type="number"
+                min="1"
+                value={matrixWidth}
+                onChange={(e) => onMatrixWidthChange(parseInt(e.target.value, 10))}
+              />
+            </label>
+            <label style={{ marginLeft: '10px' }}>
+              Matrix Height:
+              <input
+                type="number"
+                min="1"
+                value={matrixHeight}
+                onChange={(e) => onMatrixHeightChange(parseInt(e.target.value, 10))}
+              />
+            </label>
+          </div>
+          <p>Total LEDs: {matrixWidth * matrixHeight}</p>
         </div>
       )}
 
@@ -90,6 +97,10 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
           />
         </label>
       </div>
+      
+      <button onClick={onSaveToHistory} style={{ marginTop: '20px', padding: '8px 12px' }}>
+        Save to History
+      </button>
 
       <h3 style={{ marginTop: '20px' }}>Output Options</h3>
       <div>
@@ -105,6 +116,13 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
           Generate Output
         </button>
       </div>
+
+      <textarea
+        readOnly
+        value={outputValue}
+        style={{ width: '100%', height: '150px', marginTop: '10px', fontFamily: 'monospace' }}
+        placeholder="Generated output will appear here..."
+      />
     </div>
   );
 };

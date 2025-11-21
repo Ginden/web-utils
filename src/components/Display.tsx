@@ -18,18 +18,20 @@ const Display: React.FC<DisplayProps> = ({
   onLedClick,
 }) => {
   const renderRing = () => {
-    const radius = 100;
-    const centerX = 150;
-    const centerY = 150;
     const ledRadius = 10;
+    const ringRadius = 100;
+    const padding = ledRadius * 2; // Padding around the ring
+    const size = ringRadius * 2 + padding * 2;
+    const centerX = size / 2;
+    const centerY = size / 2;
 
     return (
-      <svg width="300" height="300" viewBox="0 0 300 300">
+      <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`}>
         {Array.from({ length: ringLeds }).map((_, i) => {
           const angle = (i / ringLeds) * 2 * Math.PI - Math.PI / 2; // Start from top
-          const x = centerX + radius * Math.cos(angle);
-          const y = centerY + radius * Math.sin(angle);
-          const color = ledColors[i] || '#808080'; // Default to grey
+          const x = centerX + ringRadius * Math.cos(angle);
+          const y = centerY + ringRadius * Math.sin(angle);
+          const color = ledColors[i] || '#000000'; // Default to black
 
           return (
             <circle
@@ -57,13 +59,13 @@ const Display: React.FC<DisplayProps> = ({
     const svgHeight = matrixHeight * (cellSize + padding) + padding;
 
     return (
-      <svg width={svgWidth} height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`}>
+      <svg width="100%" height="100%" viewBox={`0 0 ${svgWidth} ${svgHeight}`}>
         {Array.from({ length: matrixHeight }).map((_, row) =>
           Array.from({ length: matrixWidth }).map((__, col) => {
             const index = row * matrixWidth + col;
             const x = padding + col * (cellSize + padding);
             const y = padding + row * (cellSize + padding);
-            const color = ledColors[index] || '#808080'; // Default to grey
+            const color = ledColors[index] || '#000000'; // Default to black
 
             return (
               <rect
@@ -87,10 +89,12 @@ const Display: React.FC<DisplayProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+    <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
       {displayType === 'ring' ? renderRing() : renderMatrix()}
     </div>
   );
 };
 
 export default Display;
+
+
