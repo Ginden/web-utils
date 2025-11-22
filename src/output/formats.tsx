@@ -1,4 +1,5 @@
 import React from 'react';
+import YAML from 'yaml';
 import type { OutputFormat, RgbColor } from '../types';
 
 export type FormatConfig<Props extends Record<string, any> = Record<string, any>> = Props;
@@ -60,10 +61,33 @@ export const formatDefinitions: OutputFormatDefinition<any>[] = [
     },
     generate: (colors, config: any) => {
       const name = typeof config?.effectName === 'string' && config.effectName.trim() ? config.effectName.trim() : 'StaticGenerated';
-      const pixelRows = colors
-        .map(([r, g, b]) => `          {${r}, ${g}, ${b}},`)
-        .join('\n');
-      return `effects:\n  - addressable_lambda:\n      name: ${name}\n      update_interval: never\n      lambda: |-\n        const uint8_t pixels[][3] = {\n${pixelRows}\n        };\n\n        for (int i = 0; i < it.size(); i++) {\n          it[i] = Color(\n            pixels[i][0],\n            pixels[i][1],\n            pixels[i][2]\n          );\n        }\n`;
+      const lambdaLines = [
+        'const uint8_t pixels[][3] = {',
+        ...colors.map(([r, g, b]) => `  {${r}, ${g}, ${b}},`),
+        '};',
+        '',
+        'for (int i = 0; i < it.size(); i++) {',
+        '  it[i] = Color(',
+        '    pixels[i][0],',
+        '    pixels[i][1],',
+        '    pixels[i][2]',
+        '  );',
+        '}',
+      ].join('\n');
+
+      const tree = {
+        effects: [
+          {
+            addressable_lambda: {
+              name,
+              update_interval: 'never',
+              lambda: lambdaLines,
+            },
+          },
+        ],
+      };
+
+      return YAML.stringify(tree, { blockQuote: 'folded' });
     },
     renderConfig: ({ config, onChange }) => (
       <div className="field">
