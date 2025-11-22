@@ -195,9 +195,17 @@ export const useLedApp = () => {
     (format: OutputFormat) => {
       const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
       const safeColors = sanitizeLedColors(ledColors, ledCount);
-      setOutputValue(generateOutputForFormat(safeColors, format, formatConfigs));
+      setOutputValue(
+        generateOutputForFormat(safeColors, format, formatConfigs, {
+          displayType,
+          ringLeds,
+          matrixWidth,
+          matrixHeight,
+          rotation,
+        }),
+      );
     },
-    [displayType, formatConfigs, ledColors, matrixHeight, matrixWidth, ringLeds],
+    [displayType, formatConfigs, ledColors, matrixHeight, matrixWidth, ringLeds, rotation],
   );
 
   return {
