@@ -1,0 +1,76 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  PROJECTS: pixel-select
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            pixel-select/package-lock.json
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build projects
+        run: |
+          set -euo pipefail
+          publish_root="$PWD/.gh-pages"
+          rm -rf "$publish_root"
+          mkdir -p "$publish_root"
+
+          for project in $PROJECTS; do
+            echo "::group::Build $project"
+            if [ ! -d "$project" ]; then
+              echo "Project directory $project not found" >&2
+              exit 1
+            fi
+
+            pushd "$project" >/dev/null
+            npm ci
+            npm run build
+            popd >/dev/null
+
+            mkdir -p "$publish_root/$project"
+            cp -R "$project/dist/." "$publish_root/$project/"
+            echo "::endgroup::"
+          done
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .gh-pages
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
