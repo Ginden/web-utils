@@ -43,15 +43,18 @@ export const parseNumber = (value: unknown, fallback: number) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const withBaseMetadata = (entry: any) => ({
-  timestamp: typeof entry?.timestamp === 'string' ? entry.timestamp : new Date().toISOString(),
-  summary: typeof entry?.summary === 'string' ? entry.summary : undefined,
-  rotation: parseNumber(entry?.rotation, 0),
-  showLabels: entry?.showLabels === undefined ? true : Boolean(entry.showLabels),
-  ledColors: Array.isArray(entry?.ledColors) ? entry.ledColors : [],
-});
+const withBaseMetadata = (entry: unknown) => {
+  const typed = entry as Partial<HistoryEntry> | undefined;
+  return {
+    timestamp: typeof typed?.timestamp === 'string' ? typed.timestamp : new Date().toISOString(),
+    summary: typeof typed?.summary === 'string' ? typed.summary : undefined,
+    rotation: parseNumber((typed as { rotation?: unknown } | undefined)?.rotation, 0),
+    showLabels: typed?.showLabels === undefined ? true : Boolean(typed.showLabels),
+    ledColors: Array.isArray(typed?.ledColors) ? typed.ledColors : [],
+  };
+};
 
-export const sanitizeHistoryEntry = (entry: any): HistoryEntry | null => {
+export const sanitizeHistoryEntry = (entry: unknown): HistoryEntry | null => {
   if (!entry || typeof entry !== 'object') {
     return null;
   }

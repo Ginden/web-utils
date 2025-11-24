@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getSummary } from '../api/SummarizerAPI';
 import { hexToRgb, rgbToHex } from '../utils/colorUtils';
 import {
@@ -44,12 +44,80 @@ export const useLedApp = () => {
     pcbRatio: 0.035,
   });
   const [selectedFormat, setSelectedFormat] = useState<OutputFormat>('rgb');
-  const [formatConfigs, setFormatConfigs] = useState<Record<OutputFormat, Record<string, unknown>>>(() =>
-    buildDefaultFormatConfig(),
-  );
-  const [outputPreviewUrl, setOutputPreviewUrl] = useState<string | undefined>(undefined);
+  const [formatConfigs, setFormatConfigs] = useState<Record<OutputFormat, Record<string, unknown>>>(() => {
+    const base = buildDefaultFormatConfig();
+    const stored = localStorage.getItem('wled_udp_endpoint');
+    if (!stored) return base;
+    try {
+      const parsed = JSON.parse(stored);
+      const ip = typeof parsed?.ip === 'string' && parsed.ip.trim() ? parsed.ip.trim() : undefined;
+      const port = Number.isFinite(parsed?.port) ? Number(parsed.port) : undefined;
+      if (!ip && port === undefined) return base;
+      return {
+        ...base,
+        wled_udp: {
+          ...base.wled_udp,
+          ...(ip ? { ip } : {}),
+          ...(port !== undefined ? { port } : {}),
+        },
+      };
+    } catch (error) {
+      console.warn('Failed to parse stored WLED endpoint', error);
+      return base;
+    }
+  });
   const [hashInitialized, setHashInitialized] = useState(false);
   const WLED_ENDPOINT_STORAGE_KEY = 'wled_udp_endpoint';
+
+  const handleDisplayTypeChange = useCallback((next: DisplayType) => {
+    setDisplayType(next);
+    setSelectedFormat((prev) => {
+      const allowed = formatDefinitions.filter(
+        (fmt) => !fmt.displayTypes || fmt.displayTypes.includes(next),
+      );
+      return allowed.some((f) => f.id === prev) ? prev : allowed[0]?.id ?? 'rgb';
+    });
+  }, []);
+
+  const handleSelectFormat = useCallback((next: OutputFormat) => {
+    setSelectedFormat(next);
+    const def = getFormatDefinition(next);
+    if (!def?.eager) {
+      setOutputValue('');
+    }
+  }, []);
+
+  const previewUrl = useMemo(() => {
+    if (selectedFormat !== 'png_bitmap_8x8' || displayType !== 'matrix') return undefined;
+    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
+    const safeColors = sanitizeLedColors(ledColors, ledCount);
+    return generateMatrixBitmapDataUrl(safeColors, matrixWidth, matrixHeight) || undefined;
+  }, [displayType, ledColors, matrixHeight, matrixWidth, ringLeds, selectedFormat]);
+
+  const eagerOutputValue = useMemo(() => {
+    const def = getFormatDefinition(selectedFormat);
+    if (!def?.eager) return undefined;
+    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
+    const safeColors = sanitizeLedColors(ledColors, ledCount);
+    return generateOutputForFormat(safeColors, selectedFormat, formatConfigs, {
+      displayType,
+      ringLeds,
+      matrixWidth,
+      matrixHeight,
+      rotation,
+    });
+  }, [
+    displayType,
+    formatConfigs,
+    ledColors,
+    matrixHeight,
+    matrixWidth,
+    ringLeds,
+    rotation,
+    selectedFormat,
+  ]);
+
+  const outputValueToShow = eagerOutputValue ?? outputValue;
 
   // Load from URL hash and localStorage on mount
   useEffect(() => {
@@ -69,7 +137,7 @@ export const useLedApp = () => {
     // Defer all state updates that depend on URL parameters
     setTimeout(() => {
       if (type === 'ring' || type === 'matrix') {
-        setDisplayType(type);
+        handleDisplayTypeChange(type);
 
         let initialLedColors: RgbColor[] = [];
 
@@ -102,28 +170,7 @@ export const useLedApp = () => {
 
       setHashInitialized(true);
     }, 0);
-  }, []);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(WLED_ENDPOINT_STORAGE_KEY);
-    if (!stored) return;
-    try {
-      const parsed = JSON.parse(stored);
-      const ip = typeof parsed?.ip === 'string' && parsed.ip.trim() ? parsed.ip.trim() : undefined;
-      const port = Number.isFinite(parsed?.port) ? Number(parsed.port) : undefined;
-      if (!ip && port === undefined) return;
-      setFormatConfigs((prev) => ({
-        ...prev,
-        wled_udp: {
-          ...prev.wled_udp,
-          ...(ip ? { ip } : {}),
-          ...(port !== undefined ? { port } : {}),
-        },
-      }));
-    } catch (error) {
-      console.warn('Failed to parse stored WLED endpoint', error);
-    }
-  }, [setFormatConfigs, WLED_ENDPOINT_STORAGE_KEY]);
+  }, [handleDisplayTypeChange]);
 
   // Update URL hash on state change
   useEffect(() => {
@@ -164,36 +211,6 @@ export const useLedApp = () => {
       localStorage.removeItem(WLED_ENDPOINT_STORAGE_KEY);
     }
   }, [formatConfigs.wled_udp, WLED_ENDPOINT_STORAGE_KEY]);
-
-  // Keep selected format valid for current display type
-  useEffect(() => {
-    const visibleFormats = formatDefinitions.filter(
-      (fmt) => !fmt.displayTypes || fmt.displayTypes.includes(displayType),
-    );
-    if (!visibleFormats.find((f) => f.id === selectedFormat)) {
-      setSelectedFormat(visibleFormats[0]?.id ?? 'rgb');
-    }
-  }, [displayType, selectedFormat]);
-
-  // Clear stale textarea content when switching to non-eager formats
-  useEffect(() => {
-    const def = getFormatDefinition(selectedFormat);
-    if (def?.eager) return;
-    setOutputValue('');
-    setOutputPreviewUrl(undefined);
-  }, [selectedFormat]);
-
-  // Live preview for matrix bitmap
-  useEffect(() => {
-    if (selectedFormat !== 'png_bitmap_8x8' || displayType !== 'matrix') {
-      setOutputPreviewUrl(undefined);
-      return;
-    }
-    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
-    const safeColors = sanitizeLedColors(ledColors, ledCount);
-    const url = generateMatrixBitmapDataUrl(safeColors, matrixWidth, matrixHeight);
-    setOutputPreviewUrl(url || undefined);
-  }, [selectedFormat, displayType, ringLeds, matrixWidth, matrixHeight, ledColors]);
 
   const handleLedClick = useCallback(
     (index: number) => {
@@ -250,20 +267,23 @@ export const useLedApp = () => {
     [history],
   );
 
-  const loadFromHistory = useCallback((entry: HistoryEntry) => {
-    setDisplayType(entry.displayType);
-    if (entry.displayType === 'ring') {
-      setRingLeds(entry.ringLeds);
-    } else {
-      setMatrixWidth(entry.matrixWidth);
-      setMatrixHeight(entry.matrixHeight);
-    }
-    setRotation(entry.rotation || 0);
-    setShowLabels(entry.showLabels === undefined ? true : entry.showLabels);
+  const loadFromHistory = useCallback(
+    (entry: HistoryEntry) => {
+      handleDisplayTypeChange(entry.displayType);
+      if (entry.displayType === 'ring') {
+        setRingLeds(entry.ringLeds);
+      } else {
+        setMatrixWidth(entry.matrixWidth);
+        setMatrixHeight(entry.matrixHeight);
+      }
+      setRotation(entry.rotation || 0);
+      setShowLabels(entry.showLabels === undefined ? true : entry.showLabels);
 
-    const ledCount = entry.displayType === 'ring' ? entry.ringLeds : entry.matrixWidth * entry.matrixHeight;
-    setLedColors(sanitizeLedColors(entry.ledColors, ledCount));
-  }, []);
+      const ledCount = entry.displayType === 'ring' ? entry.ringLeds : entry.matrixWidth * entry.matrixHeight;
+      setLedColors(sanitizeLedColors(entry.ledColors, ledCount));
+    },
+    [handleDisplayTypeChange],
+  );
 
   const handleOutputRequest = useCallback(
     (format: OutputFormat) => {
@@ -274,16 +294,13 @@ export const useLedApp = () => {
       if (format === 'png_bitmap_8x8') {
         if (displayType !== 'matrix') {
           setOutputValue('Uploadable PNG works only in matrix mode');
-          setOutputPreviewUrl(undefined);
           return;
         }
-        const url = generateMatrixBitmapDataUrl(safeColors, matrixWidth, matrixHeight);
+        const url = previewUrl ?? generateMatrixBitmapDataUrl(safeColors, matrixWidth, matrixHeight);
         if (!url) {
           setOutputValue('Failed to generate PNG');
-          setOutputPreviewUrl(undefined);
           return;
         }
-        setOutputPreviewUrl(url);
         // Trigger a download so the user gets a real file for hosting
         const link = document.createElement('a');
         link.href = url;
@@ -293,7 +310,6 @@ export const useLedApp = () => {
         return;
       }
 
-      setOutputPreviewUrl(undefined);
       setOutputValue(
         generateOutputForFormat(safeColors, format, formatConfigs, {
           displayType,
@@ -304,26 +320,8 @@ export const useLedApp = () => {
         }),
       );
     },
-    [displayType, formatConfigs, ledColors, matrixHeight, matrixWidth, ringLeds, rotation],
+    [displayType, formatConfigs, ledColors, matrixHeight, matrixWidth, ringLeds, rotation, previewUrl],
   );
-
-  // Eagerly generate preview for formats that write to the textarea
-  useEffect(() => {
-    const def = getFormatDefinition(selectedFormat);
-    if (!def?.eager) return;
-    handleOutputRequest(selectedFormat);
-  }, [
-    selectedFormat,
-    handleOutputRequest,
-    displayType,
-    ringLeds,
-    matrixWidth,
-    matrixHeight,
-    ledColors,
-    rotation,
-    formatConfigs,
-    outputPreviewUrl,
-  ]);
 
   return {
     state: {
@@ -333,7 +331,7 @@ export const useLedApp = () => {
       matrixHeight,
       ledColors,
       currentColor,
-      outputValue,
+      outputValue: outputValueToShow,
       history,
       rotation,
       showLabels,
@@ -341,10 +339,10 @@ export const useLedApp = () => {
       ringLayoutConfig,
       selectedFormat,
       formatConfigs,
-      outputPreviewUrl,
+      outputPreviewUrl: previewUrl,
     },
     actions: {
-      setDisplayType,
+      setDisplayType: handleDisplayTypeChange,
       setRingLeds,
       setMatrixWidth,
       setMatrixHeight,
@@ -358,7 +356,7 @@ export const useLedApp = () => {
       loadFromHistory,
       setOutputValue,
       setLedColors,
-      setSelectedFormat,
+      setSelectedFormat: handleSelectFormat,
       setFormatConfigs,
     },
   };
