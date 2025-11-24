@@ -43,6 +43,7 @@ export const useLedApp = () => {
   const [formatConfigs, setFormatConfigs] = useState<Record<OutputFormat, Record<string, unknown>>>(
     () => buildDefaultFormatConfig(),
   );
+  const WLED_ENDPOINT_STORAGE_KEY = 'wled_udp_endpoint';
 
   // Load from URL hash and localStorage on mount
   useEffect(() => {
@@ -95,6 +96,27 @@ export const useLedApp = () => {
     }, 0);
   }, []);
 
+  useEffect(() => {
+    const stored = localStorage.getItem(WLED_ENDPOINT_STORAGE_KEY);
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      const ip = typeof parsed?.ip === 'string' && parsed.ip.trim() ? parsed.ip.trim() : undefined;
+      const port = Number.isFinite(parsed?.port) ? Number(parsed.port) : undefined;
+      if (!ip && port === undefined) return;
+      setFormatConfigs((prev) => ({
+        ...prev,
+        wled_udp: {
+          ...prev.wled_udp,
+          ...(ip ? { ip } : {}),
+          ...(port !== undefined ? { port } : {}),
+        },
+      }));
+    } catch (error) {
+      console.warn('Failed to parse stored WLED endpoint', error);
+    }
+  }, [setFormatConfigs, WLED_ENDPOINT_STORAGE_KEY]);
+
   // Update URL hash on state change
   useEffect(() => {
     const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
@@ -119,6 +141,22 @@ export const useLedApp = () => {
       window.location.hash = hash;
     }
   }, [displayType, ringLeds, matrixWidth, matrixHeight, rotation, showLabels, ledColors]);
+
+  useEffect(() => {
+    const cfg = formatConfigs.wled_udp as { ip?: unknown; port?: unknown } | undefined;
+    if (!cfg) return;
+    const ip = typeof cfg.ip === 'string' && cfg.ip.trim() ? cfg.ip.trim() : undefined;
+    const port = Number.isFinite(cfg.port) ? Number(cfg.port) : undefined;
+
+    if (ip || port !== undefined) {
+      localStorage.setItem(
+        WLED_ENDPOINT_STORAGE_KEY,
+        JSON.stringify({ ip, port }),
+      );
+    } else {
+      localStorage.removeItem(WLED_ENDPOINT_STORAGE_KEY);
+    }
+  }, [formatConfigs.wled_udp, WLED_ENDPOINT_STORAGE_KEY]);
 
   const handleLedClick = useCallback(
     (index: number) => {

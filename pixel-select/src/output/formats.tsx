@@ -187,7 +187,7 @@ export const formatDefinitions: OutputFormatDefinition<any>[] = [
         .flat()
         .map((v) => `\\x${(v & 0xff).toString(16).padStart(2, '0')}`)
         .join('');
-      const cmd = `printf '%b' '${hexBytes}' | nc -u -w1 ${ip} ${port}`;
+      const cmd = `printf '%b' '${hexBytes}' | nc -u -w1 -q0 ${ip} ${port}`;
       return cmd;
     },
     renderConfig: ({ config, onChange }) => (
