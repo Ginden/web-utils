@@ -12,7 +12,8 @@ import {
   sanitizeLedColors,
 } from '../utils/ledState';
 import type { DisplayType, HistoryEntry, OutputFormat, RingLayoutConfig, RgbColor } from '../types';
-import { buildDefaultFormatConfig, generateOutputForFormat } from '../output/formats';
+import { buildDefaultFormatConfig, formatDefinitions, generateOutputForFormat, getFormatDefinition } from '../output/formats';
+import { generateMatrixBitmapDataUrl } from '../output/png';
 
 const generateArduinoOutput = (colors: RgbColor[]) => {
   let output = `CRGB leds[] = {\n`;
@@ -43,6 +44,8 @@ export const useLedApp = () => {
   const [formatConfigs, setFormatConfigs] = useState<Record<OutputFormat, Record<string, unknown>>>(
     () => buildDefaultFormatConfig(),
   );
+  const [outputPreviewUrl, setOutputPreviewUrl] = useState<string | undefined>(undefined);
+  const [hashInitialized, setHashInitialized] = useState(false);
   const WLED_ENDPOINT_STORAGE_KEY = 'wled_udp_endpoint';
 
   // Load from URL hash and localStorage on mount
@@ -93,6 +96,8 @@ export const useLedApp = () => {
         setRotation(rotationFromHash);
         setShowLabels(showLabelsFromHash);
       }
+
+      setHashInitialized(true);
     }, 0);
   }, []);
 
@@ -119,6 +124,8 @@ export const useLedApp = () => {
 
   // Update URL hash on state change
   useEffect(() => {
+    if (!hashInitialized) return;
+
     const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
     const colorsForHash = sanitizeLedColors(ledColors, ledCount);
     const params = new URLSearchParams();
@@ -140,7 +147,7 @@ export const useLedApp = () => {
     if (window.location.hash !== `#${hash}`) {
       window.location.hash = hash;
     }
-  }, [displayType, ringLeds, matrixWidth, matrixHeight, rotation, showLabels, ledColors]);
+  }, [displayType, ringLeds, matrixWidth, matrixHeight, rotation, showLabels, ledColors, hashInitialized]);
 
   useEffect(() => {
     const cfg = formatConfigs.wled_udp as { ip?: unknown; port?: unknown } | undefined;
@@ -157,6 +164,36 @@ export const useLedApp = () => {
       localStorage.removeItem(WLED_ENDPOINT_STORAGE_KEY);
     }
   }, [formatConfigs.wled_udp, WLED_ENDPOINT_STORAGE_KEY]);
+
+  // Keep selected format valid for current display type
+  useEffect(() => {
+    const visibleFormats = formatDefinitions.filter(
+      (fmt) => !fmt.displayTypes || fmt.displayTypes.includes(displayType),
+    );
+    if (!visibleFormats.find((f) => f.id === selectedFormat)) {
+      setSelectedFormat(visibleFormats[0]?.id ?? 'rgb');
+    }
+  }, [displayType, selectedFormat]);
+
+  // Clear stale textarea content when switching to non-eager formats
+  useEffect(() => {
+    const def = getFormatDefinition(selectedFormat);
+    if (def?.eager) return;
+    setOutputValue('');
+    setOutputPreviewUrl(undefined);
+  }, [selectedFormat]);
+
+  // Live preview for matrix bitmap
+  useEffect(() => {
+    if (selectedFormat !== 'png_bitmap_8x8' || displayType !== 'matrix') {
+      setOutputPreviewUrl(undefined);
+      return;
+    }
+    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
+    const safeColors = sanitizeLedColors(ledColors, ledCount);
+    const url = generateMatrixBitmapDataUrl(safeColors, matrixWidth, matrixHeight);
+    setOutputPreviewUrl(url || undefined);
+  }, [selectedFormat, displayType, ringLeds, matrixWidth, matrixHeight, ledColors]);
 
   const handleLedClick = useCallback(
     (index: number) => {
@@ -233,6 +270,31 @@ export const useLedApp = () => {
     (format: OutputFormat) => {
       const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
       const safeColors = sanitizeLedColors(ledColors, ledCount);
+
+      // Special handling for matrix PNG bitmap to support preview + proper downloads
+      if (format === 'png_bitmap_8x8') {
+        if (displayType !== 'matrix') {
+          setOutputValue('Uploadable PNG works only in matrix mode');
+          setOutputPreviewUrl(undefined);
+          return;
+        }
+        const url = generateMatrixBitmapDataUrl(safeColors, matrixWidth, matrixHeight);
+        if (!url) {
+          setOutputValue('Failed to generate PNG');
+          setOutputPreviewUrl(undefined);
+          return;
+        }
+        setOutputPreviewUrl(url);
+        // Trigger a download so the user gets a real file for hosting
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `pixel-select-${matrixWidth}x${matrixHeight}-${Date.now()}.png`;
+        link.click();
+        setOutputValue(`${matrixWidth}x${matrixHeight} PNG downloaded`);
+        return;
+      }
+
+      setOutputPreviewUrl(undefined);
       setOutputValue(
         generateOutputForFormat(safeColors, format, formatConfigs, {
           displayType,
@@ -245,6 +307,24 @@ export const useLedApp = () => {
     },
     [displayType, formatConfigs, ledColors, matrixHeight, matrixWidth, ringLeds, rotation],
   );
+
+  // Eagerly generate preview for formats that write to the textarea
+  useEffect(() => {
+    const def = getFormatDefinition(selectedFormat);
+    if (!def?.eager) return;
+    handleOutputRequest(selectedFormat);
+  }, [
+    selectedFormat,
+    handleOutputRequest,
+    displayType,
+    ringLeds,
+    matrixWidth,
+    matrixHeight,
+    ledColors,
+    rotation,
+    formatConfigs,
+    outputPreviewUrl,
+  ]);
 
   return {
     state: {
@@ -262,6 +342,7 @@ export const useLedApp = () => {
       ringLayoutConfig,
       selectedFormat,
       formatConfigs,
+      outputPreviewUrl,
     },
     actions: {
       setDisplayType,

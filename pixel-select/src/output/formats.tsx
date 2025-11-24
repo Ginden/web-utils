@@ -1,7 +1,7 @@
 import React from 'react';
 import YAML from 'yaml';
 import type { DisplayType, OutputFormat, RgbColor } from '../types';
-import { generatePngDataUrl } from './png';
+import { generateMatrixBitmapDataUrl, generatePngDataUrl } from './png';
 
 export type FormatConfig<Props extends Record<string, any> = Record<string, any>> = Props;
 
@@ -15,6 +15,10 @@ export type OutputFormatDefinition<TConfig extends FormatConfig = FormatConfig> 
   label: string;
   description?: string;
   defaultConfig: TConfig;
+  /** Auto-generate output when inputs change (writes to textarea, no downloads). */
+  eager?: boolean;
+  /** Limit availability to specific display types. */
+  displayTypes?: DisplayType[];
   generate: (
     colors: RgbColor[],
     config: TConfig,
@@ -46,14 +50,15 @@ const bufferFormat = (
 });
 
 export const formatDefinitions: OutputFormatDefinition<any>[] = [
-  bufferFormat('rgb', 'RGB Buffer', 'rgb', 'Comma-separated RGB values in array form'),
-  bufferFormat('bgr', 'BGR Buffer', 'bgr', 'Comma-separated BGR values in array form'),
-  bufferFormat('gbr', 'GBR Buffer', 'gbr', 'Comma-separated GBR values in array form'),
+  { ...bufferFormat('rgb', 'RGB Buffer', 'rgb', 'Comma-separated RGB values in array form'), eager: true },
+  { ...bufferFormat('bgr', 'BGR Buffer', 'bgr', 'Comma-separated BGR values in array form'), eager: true },
+  { ...bufferFormat('gbr', 'GBR Buffer', 'gbr', 'Comma-separated GBR values in array form'), eager: true },
   {
     id: 'arduino',
     label: 'Arduino (FastLED)',
     description: 'C array of CRGB objects',
     defaultConfig: {},
+    eager: true,
     generate: (colors) =>
       `CRGB leds[] = {\n${colors.map(([r, g, b]) => `  CRGB(${r}, ${g}, ${b})`).join(',\n')}\n};`,
   },
@@ -64,6 +69,7 @@ export const formatDefinitions: OutputFormatDefinition<any>[] = [
     defaultConfig: {
       effectName: 'StaticGenerated',
     },
+    eager: true,
     generate: (colors, config: any) => {
       const name = typeof config?.effectName === 'string' && config.effectName.trim() ? config.effectName.trim() : 'StaticGenerated';
       const lambdaLines = [
@@ -160,6 +166,18 @@ export const formatDefinitions: OutputFormatDefinition<any>[] = [
     ),
   },
   {
+    id: 'png_bitmap_8x8',
+    label: 'PNG bitmap (matrix size)',
+    description: 'Pixel-perfect PNG matching current matrix dimensions (for uploads)',
+    defaultConfig: {},
+    eager: false,
+    displayTypes: ['matrix'],
+    generate: (colors, _config: any, ctx?: { displayType: DisplayType; ringLeds: number; matrixWidth: number; matrixHeight: number; rotation: number }) => {
+      if (!ctx || ctx.displayType !== 'matrix') return 'Uploadable PNG works only in matrix mode';
+      return 'Use Generate to download PNG';
+    },
+  },
+  {
     id: 'wled_udp',
     label: 'WLED UDP packet',
     description: 'Shell command to send raw bytes over UDP',
@@ -168,6 +186,7 @@ export const formatDefinitions: OutputFormatDefinition<any>[] = [
       port: 19446,
       order: 'grb' as 'grb' | 'rgb' | 'bgr' | 'gbr',
     },
+    eager: true,
     generate: (colors, config: any) => {
       const ip = typeof config?.ip === 'string' && config.ip.trim() ? config.ip.trim() : '192.168.1.100';
       const port = Number.isFinite(config?.port) ? Number(config.port) : 19446;

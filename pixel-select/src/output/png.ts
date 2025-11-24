@@ -120,3 +120,28 @@ export const generatePngDataUrl = (colors: RgbColor[], options: PngOptions) => {
 
   return canvas.toDataURL('image/png');
 };
+
+export const generateMatrixBitmapDataUrl = (colors: RgbColor[], width: number, height: number) => {
+  if (width <= 0 || height <= 0) return '';
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  const imageData = ctx.createImageData(width, height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      const [r, g, b] = colors[idx] || [0, 0, 0];
+      const offset = idx * 4;
+      imageData.data[offset] = Math.max(0, Math.min(255, r));
+      imageData.data[offset + 1] = Math.max(0, Math.min(255, g));
+      imageData.data[offset + 2] = Math.max(0, Math.min(255, b));
+      imageData.data[offset + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  return canvas.toDataURL('image/png');
+};

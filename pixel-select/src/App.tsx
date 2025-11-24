@@ -39,6 +39,7 @@ const App: React.FC = () => {
       ringLayoutConfig,
       selectedFormat,
       formatConfigs,
+      outputPreviewUrl,
     },
     actions: {
       setDisplayType,
@@ -109,6 +110,7 @@ const App: React.FC = () => {
             onColorChange={setCurrentColor}
             onOutputRequest={handleOutputRequest}
             outputValue={outputValue}
+            outputPreviewUrl={outputPreviewUrl}
             onSaveToHistory={handleSaveToHistory}
             rotation={rotation}
             onRotationChange={setRotation}

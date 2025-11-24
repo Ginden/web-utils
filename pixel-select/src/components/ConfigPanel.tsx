@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { OutputFormat } from '../types';
 import { formatDefinitions } from '../output/formats';
 
@@ -15,6 +15,7 @@ interface ConfigPanelProps {
   onColorChange: React.Dispatch<React.SetStateAction<string>>;
   onOutputRequest: (format: OutputFormat) => void;
   outputValue: string;
+  outputPreviewUrl?: string;
   onSaveToHistory: () => void;
   rotation: number;
   onRotationChange: React.Dispatch<React.SetStateAction<number>>;
@@ -42,6 +43,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   onColorChange,
   onOutputRequest,
   outputValue,
+  outputPreviewUrl,
   onSaveToHistory,
   rotation,
   onRotationChange,
@@ -54,8 +56,35 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   onFormatConfigsChange,
 }) => {
   const rotationOptions = [0, 45, 90, 135, 180, 225, 270, 315];
-  const activeFormat = formatDefinitions.find((f) => f.id === selectedFormat) ?? formatDefinitions[0];
-  const activeConfig = (formatConfigs[selectedFormat] ?? activeFormat.defaultConfig) as Record<string, unknown>;
+  const formatAllowed = (fmt: (typeof formatDefinitions)[number]) =>
+    !fmt.displayTypes || fmt.displayTypes.includes(displayType);
+  const rawActiveFormat = formatDefinitions.find((f) => f.id === selectedFormat);
+  const fallbackFormat = formatDefinitions.find(formatAllowed) ?? formatDefinitions[0];
+  const activeFormat = rawActiveFormat && formatAllowed(rawActiveFormat) ? rawActiveFormat : fallbackFormat;
+  const activeConfig = (formatConfigs[activeFormat.id] ?? activeFormat.defaultConfig) as Record<
+    string,
+    unknown
+  >;
+  const isBitmapFormat = activeFormat.id === 'png_bitmap_8x8';
+  const previewUrl = isBitmapFormat ? outputPreviewUrl : undefined;
+  const previewWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [previewWidth, setPreviewWidth] = useState<number>(matrixWidth);
+
+  useEffect(() => {
+    if (!isBitmapFormat) return;
+    const recompute = () => {
+      const el = previewWrapperRef.current;
+      if (!el) return;
+      const available = Math.max(el.getBoundingClientRect().width, matrixWidth);
+      const step = Math.max(1, Math.floor(available / matrixWidth));
+      const target = Math.max(matrixWidth, step * matrixWidth);
+      setPreviewWidth((prev) => (prev === target ? prev : target));
+    };
+
+    recompute();
+    window.addEventListener('resize', recompute);
+    return () => window.removeEventListener('resize', recompute);
+  }, [isBitmapFormat, matrixWidth]);
 
   return (
     <div className="card-surface stack">
@@ -162,14 +191,18 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
             onChange={(e) => onSelectFormat(e.target.value as OutputFormat)}
           >
             {formatDefinitions.map((fmt) => (
-              <option key={fmt.id} value={fmt.id}>
+              <option key={fmt.id} value={fmt.id} disabled={!formatAllowed(fmt)}>
                 {fmt.label}
               </option>
             ))}
           </select>
         </div>
-        <button className="btn ghost" onClick={() => onOutputRequest(selectedFormat)}>
-          Generate
+        <button
+          className="btn ghost"
+          onClick={() => onOutputRequest(selectedFormat)}
+          disabled={isBitmapFormat && !previewUrl}
+        >
+          {isBitmapFormat ? 'Download PNG' : 'Generate'}
         </button>
       </div>
 
@@ -188,12 +221,80 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
         </div>
       )}
 
-      <textarea
-        className="code-block"
-        readOnly
-        value={outputValue}
-        placeholder="Generated output will appear here..."
-      />
+      {!isBitmapFormat && (
+        <textarea
+          className="code-block"
+          readOnly
+          value={outputValue}
+          placeholder="Generated output will appear here..."
+        />
+      )}
+      {isBitmapFormat && (
+        <div
+          className="image-preview"
+          ref={previewWrapperRef}
+          style={{
+            width: '100%',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            display: 'block',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div className="label">PNG Preview</div>
+          {previewUrl ? (
+            <picture
+              style={{
+                border: '1px solid var(--border)',
+                padding: '6px',
+                display: 'inline-block',
+                background: 'var(--surface)',
+                maxWidth: '100%',
+              }}
+            >
+              <img
+                src={previewUrl}
+                alt="Matrix PNG preview"
+                style={{
+                  imageRendering: 'pixelated',
+                  width: `${previewWidth}px`,
+                  height: 'auto',
+                  display: 'block',
+                }}
+              />
+            </picture>
+          ) : (
+            <div
+              style={{
+                width: '120px',
+                height: '120px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px dashed var(--border)',
+                color: 'var(--muted)',
+                fontSize: '12px',
+              }}
+            >
+              No preview
+            </div>
+          )}
+          <div className="space-top">
+            <a
+              className="btn ghost"
+              href={previewUrl ?? '#'}
+              download={`pixel-select-${matrixWidth}x${matrixHeight}.png`}
+              aria-disabled={!previewUrl}
+              style={!previewUrl ? { pointerEvents: 'none', opacity: 0.6 } : undefined}
+            >
+              Download PNG
+            </a>
+          </div>
+          <div className="muted" style={{ fontSize: '12px' }}>
+            Preview auto-updates; click Download for a file suitable for hosting.
+          </div>
+        </div>
+      )}
 
       {/* Layout tuning removed now that defaults are dialed in */}
     </div>

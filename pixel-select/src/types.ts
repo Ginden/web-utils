@@ -34,4 +34,5 @@ export type OutputFormat =
   | 'arduino'
   | 'esphome_static'
   | 'png'
+  | 'png_bitmap_8x8'
   | 'wled_udp';

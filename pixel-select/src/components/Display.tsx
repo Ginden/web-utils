@@ -35,6 +35,15 @@ const Display: React.FC<DisplayProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 360, height: 360 });
 
+  const computePinMetrics = (ledSize: number, pcbWidth: number) => {
+    const pinHeight = Math.max(5, Math.min(12, Math.max(ledSize * 0.32, pcbWidth * 0.42)));
+    const pinWidth = Math.max(0.9, Math.min(2.4, Math.max(ledSize * 0.09, pcbWidth * 0.12)));
+    const pinSpacing = Math.max(1, Math.min(2.2, Math.max(ledSize * 0.1, pcbWidth * 0.1)));
+    const pinsOffset = Math.max(4, Math.min(10, Math.max(ledSize * 0.28, pcbWidth * 0.35)));
+    const buryDepth = Math.min(pinHeight * 0.2, pcbWidth * 0.4);
+    return { pinHeight, pinWidth, pinSpacing, pinsOffset, buryDepth };
+  };
+
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver((entries) => {
@@ -53,7 +62,8 @@ const Display: React.FC<DisplayProps> = ({
       ...ringLayoutConfig,
     };
 
-    const size = Math.max(360, Math.min(dimensions.width, dimensions.height));
+    // Allow the canvas to shrink on small screens while keeping a sensible minimum
+    const size = Math.max(240, Math.min(dimensions.width, dimensions.height));
     const pcbWidth = Math.max(8, Math.min(28, size * cfg.pcbRatio));
 
     const maxRadius = Math.max(60, (size - pcbWidth * 2) / 2);
@@ -67,9 +77,12 @@ const Display: React.FC<DisplayProps> = ({
       Math.min(34, actualSpacing * 0.75, pcbWidth * 0.85),
     ); // keep LEDs within PCB band and reduce overlap
 
+    const { pinHeight, pinsOffset, buryDepth } = computePinMetrics(ledSize, pcbWidth);
+    const connectorAllowance = Math.max(0, pinHeight - buryDepth + pinsOffset);
+
     const effectiveSize = size;
     const center = effectiveSize / 2;
-    const outerRadius = ringRadius + Math.max(pcbWidth / 2, ledSize / 2);
+    const outerRadius = ringRadius + Math.max(pcbWidth / 2, ledSize / 2) + connectorAllowance;
     const margin = 8;
     const scale = Math.min(8, Math.max(0.6, (effectiveSize / 2 - margin) / outerRadius));
 
@@ -77,12 +90,12 @@ const Display: React.FC<DisplayProps> = ({
   }, [dimensions, ringLeds, ringLayoutConfig]);
 
   const matrixLayout = useMemo(() => {
-    const size = Math.max(320, Math.min(dimensions.width, dimensions.height));
-    const padding = Math.max(4, size * 0.012);
-    const pcbMargin = Math.max(8, size * 0.03);
+    const size = Math.max(220, Math.min(dimensions.width, dimensions.height));
+    const padding = Math.max(3, size * 0.012);
+    const pcbMargin = Math.max(6, size * 0.03);
     const maxCells = Math.max(matrixWidth, matrixHeight, 1);
     const available = size - pcbMargin * 2;
-    const cellSize = Math.max(12, Math.min(40, available / maxCells - padding));
+    const cellSize = Math.max(10, Math.min(36, available / maxCells - padding));
     const contentWidth = matrixWidth * (cellSize + padding) - padding;
     const contentHeight = matrixHeight * (cellSize + padding) - padding;
     const svgWidth = contentWidth + pcbMargin * 2;
@@ -94,6 +107,12 @@ const Display: React.FC<DisplayProps> = ({
 
   const renderRing = () => {
     const { ledSize, ringRadius, pcbWidth, size, centerX, centerY, scale } = ringLayout;
+    const { pinHeight, pinWidth, pinSpacing, pinsOffset, buryDepth } = computePinMetrics(ledSize, pcbWidth);
+    const diodeZeroAngle = -Math.PI / 2;
+    const diodeZeroX = centerX + ringRadius * Math.cos(diodeZeroAngle);
+    const diodeZeroY = centerY + ringRadius * Math.sin(diodeZeroAngle);
+    const pinsStartX = diodeZeroX - (pinWidth * 4 + pinSpacing * 3) / 2;
+    const pinsY = diodeZeroY - pinsOffset - pinHeight + buryDepth;
 
     return (
       <svg
@@ -104,6 +123,26 @@ const Display: React.FC<DisplayProps> = ({
       >
         <g transform={`translate(${centerX}, ${centerY}) scale(${scale}) translate(${-centerX}, ${-centerY})`}>
           <g transform={`rotate(${rotation}, ${centerX}, ${centerY})`}>
+            <g pointerEvents="none">
+              {Array.from({ length: 4 }).map((_, pinIndex) => {
+                const pinX = pinsStartX + pinIndex * (pinWidth + pinSpacing);
+                const radius = Math.min(1.2, pinWidth * 0.35);
+                return (
+                  <rect
+                    key={`pin-${pinIndex}`}
+                    x={pinX}
+                    y={pinsY}
+                    width={pinWidth}
+                    height={pinHeight}
+                    fill="#d7a82f"
+                    stroke="#8a5f0d"
+                    strokeWidth={Math.max(0.3, pinWidth * 0.14)}
+                    rx={radius}
+                    ry={radius}
+                  />
+                );
+              })}
+            </g>
             <circle
               cx={centerX}
               cy={centerY}
@@ -163,7 +202,12 @@ const Display: React.FC<DisplayProps> = ({
     const { cellSize, padding, pcbMargin, svgWidth, svgHeight, centerX, centerY } = matrixLayout;
 
     return (
-      <svg width="100%" height="100%" viewBox={`0 0 ${svgWidth} ${svgHeight}`}>
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        preserveAspectRatio="xMidYMid meet"
+      >
         <g transform={`rotate(${rotation}, ${centerX}, ${centerY})`}>
           <rect
             x="0"
