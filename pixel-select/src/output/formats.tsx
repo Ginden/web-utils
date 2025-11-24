@@ -1,7 +1,7 @@
 import React from 'react';
 import YAML from 'yaml';
 import type { DisplayType, OutputFormat, RgbColor } from '../types';
-import { generateMatrixBitmapDataUrl, generatePngDataUrl } from './png';
+import { generatePngDataUrl } from './png';
 
 export type FormatConfig<Props extends Record<string, any> = Record<string, any>> = Props;
 
@@ -38,12 +38,7 @@ const bufferFormat = (
   description,
   defaultConfig: { order },
   generate: (colors, config: any) => {
-    const indices =
-      config.order === 'rgb'
-        ? [0, 1, 2]
-        : config.order === 'bgr'
-          ? [2, 1, 0]
-          : [1, 2, 0]; // gbr
+    const indices = config.order === 'rgb' ? [0, 1, 2] : config.order === 'bgr' ? [2, 1, 0] : [1, 2, 0]; // gbr
     const output = colors.map((col) => `${col[indices[0]]}, ${col[indices[1]]}, ${col[indices[2]]}`).join(', ');
     return `[${output}]`;
   },
@@ -59,8 +54,7 @@ export const formatDefinitions: OutputFormatDefinition<any>[] = [
     description: 'C array of CRGB objects',
     defaultConfig: {},
     eager: true,
-    generate: (colors) =>
-      `CRGB leds[] = {\n${colors.map(([r, g, b]) => `  CRGB(${r}, ${g}, ${b})`).join(',\n')}\n};`,
+    generate: (colors) => `CRGB leds[] = {\n${colors.map(([r, g, b]) => `  CRGB(${r}, ${g}, ${b})`).join(',\n')}\n};`,
   },
   {
     id: 'esphome_static',
@@ -71,7 +65,10 @@ export const formatDefinitions: OutputFormatDefinition<any>[] = [
     },
     eager: true,
     generate: (colors, config: any) => {
-      const name = typeof config?.effectName === 'string' && config.effectName.trim() ? config.effectName.trim() : 'StaticGenerated';
+      const name =
+        typeof config?.effectName === 'string' && config.effectName.trim()
+          ? config.effectName.trim()
+          : 'StaticGenerated';
       const lambdaLines = [
         'const uint8_t pixels[][3] = {',
         ...colors.map(([r, g, b]) => `  {${r}, ${g}, ${b}},`),
@@ -121,10 +118,16 @@ export const formatDefinitions: OutputFormatDefinition<any>[] = [
       resolution: 1024,
       background: '#0f162c',
     },
-    generate: (colors, config: any, ctx?: { displayType: DisplayType; ringLeds: number; matrixWidth: number; matrixHeight: number; rotation: number }) => {
+    generate: (
+      colors,
+      config: any,
+      ctx?: { displayType: DisplayType; ringLeds: number; matrixWidth: number; matrixHeight: number; rotation: number },
+    ) => {
       if (!ctx) return 'PNG generation needs display context';
       const url = generatePngDataUrl(colors, {
-        resolution: Number.isFinite(config?.resolution) ? Math.max(64, Math.min(4096, Number(config.resolution))) : 1024,
+        resolution: Number.isFinite(config?.resolution)
+          ? Math.max(64, Math.min(4096, Number(config.resolution)))
+          : 1024,
         background: typeof config?.background === 'string' ? config.background : '#0f162c',
         displayType: ctx.displayType,
         ringLeds: ctx.ringLeds,
@@ -172,7 +175,11 @@ export const formatDefinitions: OutputFormatDefinition<any>[] = [
     defaultConfig: {},
     eager: false,
     displayTypes: ['matrix'],
-    generate: (colors, _config: any, ctx?: { displayType: DisplayType; ringLeds: number; matrixWidth: number; matrixHeight: number; rotation: number }) => {
+    generate: (
+      _colors,
+      _config: any,
+      ctx?: { displayType: DisplayType; ringLeds: number; matrixWidth: number; matrixHeight: number; rotation: number },
+    ) => {
       if (!ctx || ctx.displayType !== 'matrix') return 'Uploadable PNG works only in matrix mode';
       return 'Use Generate to download PNG';
     },
@@ -194,13 +201,7 @@ export const formatDefinitions: OutputFormatDefinition<any>[] = [
         ? (config.order as 'rgb' | 'bgr' | 'gbr' | 'grb')
         : 'grb';
       const indices =
-        order === 'rgb'
-          ? [0, 1, 2]
-          : order === 'bgr'
-            ? [2, 1, 0]
-            : order === 'gbr'
-              ? [1, 2, 0]
-              : [1, 0, 2]; // grb default for WLED
+        order === 'rgb' ? [0, 1, 2] : order === 'bgr' ? [2, 1, 0] : order === 'gbr' ? [1, 2, 0] : [1, 0, 2]; // grb default for WLED
       const hexBytes = colors
         .map((c) => indices.map((idx) => c[idx] ?? 0))
         .flat()
@@ -250,8 +251,7 @@ export const formatDefinitions: OutputFormatDefinition<any>[] = [
   },
 ];
 
-export const getFormatDefinition = (id: OutputFormat) =>
-  formatDefinitions.find((def) => def.id === id);
+export const getFormatDefinition = (id: OutputFormat) => formatDefinitions.find((def) => def.id === id);
 
 export const buildDefaultFormatConfig = () => {
   const result: Record<OutputFormat, FormatConfig> = {} as Record<OutputFormat, FormatConfig>;

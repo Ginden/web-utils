@@ -20,18 +20,13 @@ export function hexToRgb(hex: string): [number, number, number] {
  * Clamps RGB values to 0-255.
  */
 export function rgbToHex(rgb: [number, number, number]): string {
-  const [r, g, b] = rgb.map(val => Math.max(0, Math.min(255, Math.round(val)))); // Clamp and round
-  return (
-    (1 << 24 | r << 16 | g << 8 | b)
-      .toString(16)
-      .slice(1)
-      .toUpperCase()
-  );
+  const [r, g, b] = rgb.map((val) => Math.max(0, Math.min(255, Math.round(val)))); // Clamp and round
+  return ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1).toUpperCase();
 }
 
 /**
  * Converts an RGB array [r, g, b] to a hex color string (#RRGGBB).
  */
 export function rgbToHashHex(rgb: [number, number, number]): string {
-    return '#' + rgbToHex(rgb);
+  return '#' + rgbToHex(rgb);
 }

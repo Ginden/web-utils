@@ -4,8 +4,7 @@ export const DEFAULT_RING_LED_COUNT = 24;
 export const DEFAULT_MATRIX_WIDTH = 8;
 export const DEFAULT_MATRIX_HEIGHT = 8;
 
-export const createBlankColors = (count: number): RgbColor[] =>
-  Array.from({ length: count }, () => [0, 0, 0]);
+export const createBlankColors = (count: number): RgbColor[] => Array.from({ length: count }, () => [0, 0, 0]);
 
 export const clampChannel = (value: unknown) => {
   const numeric = typeof value === 'string' ? Number.parseInt(value, 10) : Number(value);
@@ -103,21 +102,15 @@ export const parseStoredHistory = (raw: string | null): HistoryEntry[] => {
       return [];
     }
 
-    return parsed
-      .map((entry) => sanitizeHistoryEntry(entry))
-      .filter((entry): entry is HistoryEntry => Boolean(entry));
+    return parsed.map((entry) => sanitizeHistoryEntry(entry)).filter((entry): entry is HistoryEntry => Boolean(entry));
   } catch (e) {
     console.error('Failed to parse history from localStorage', e);
     return [];
   }
 };
 
-export const getLedCount = (
-  displayType: DisplayType,
-  ringLeds: number,
-  matrixWidth: number,
-  matrixHeight: number,
-) => (displayType === 'ring' ? ringLeds : matrixWidth * matrixHeight);
+export const getLedCount = (displayType: DisplayType, ringLeds: number, matrixWidth: number, matrixHeight: number) =>
+  displayType === 'ring' ? ringLeds : matrixWidth * matrixHeight;
 
 export const describeConfiguration = (entry: HistoryEntry) =>
   entry.displayType === 'ring'

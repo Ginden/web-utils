@@ -72,10 +72,7 @@ const Display: React.FC<DisplayProps> = ({
 
     const circumference = 2 * Math.PI * ringRadius;
     const actualSpacing = circumference / Math.max(1, ringLeds);
-    const ledSize = Math.max(
-      10,
-      Math.min(34, actualSpacing * 0.75, pcbWidth * 0.85),
-    ); // keep LEDs within PCB band and reduce overlap
+    const ledSize = Math.max(10, Math.min(34, actualSpacing * 0.75, pcbWidth * 0.85)); // keep LEDs within PCB band and reduce overlap
 
     const { pinHeight, pinsOffset, buryDepth } = computePinMetrics(ledSize, pcbWidth);
     const connectorAllowance = Math.max(0, pinHeight - buryDepth + pinsOffset);
@@ -115,12 +112,7 @@ const Display: React.FC<DisplayProps> = ({
     const pinsY = diodeZeroY - pinsOffset - pinHeight + buryDepth;
 
     return (
-      <svg
-        width="100%"
-        height="100%"
-        viewBox={`0 0 ${size} ${size}`}
-        preserveAspectRatio="xMidYMid meet"
-      >
+      <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} preserveAspectRatio="xMidYMid meet">
         <g transform={`translate(${centerX}, ${centerY}) scale(${scale}) translate(${-centerX}, ${-centerY})`}>
           <g transform={`rotate(${rotation}, ${centerX}, ${centerY})`}>
             <g pointerEvents="none">
@@ -202,12 +194,7 @@ const Display: React.FC<DisplayProps> = ({
     const { cellSize, padding, pcbMargin, svgWidth, svgHeight, centerX, centerY } = matrixLayout;
 
     return (
-      <svg
-        width="100%"
-        height="100%"
-        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        preserveAspectRatio="xMidYMid meet"
-      >
+      <svg width="100%" height="100%" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="xMidYMid meet">
         <g transform={`rotate(${rotation}, ${centerX}, ${centerY})`}>
           <rect
             x="0"

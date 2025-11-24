@@ -11,9 +11,7 @@ const App: React.FC = () => {
     if (stored === 'light' || stored === 'dark') {
       return stored;
     }
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
-      ? 'light'
-      : 'dark';
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   });
 
   useEffect(() => {
@@ -122,11 +120,7 @@ const App: React.FC = () => {
             formatConfigs={formatConfigs}
             onFormatConfigsChange={setFormatConfigs}
           />
-          <HistoryPanel
-            history={history}
-            onLoadHistory={loadFromHistory}
-            onDeleteHistory={handleDeleteFromHistory}
-          />
+          <HistoryPanel history={history} onLoadHistory={loadFromHistory} onDeleteHistory={handleDeleteFromHistory} />
         </div>
       </div>
     </div>

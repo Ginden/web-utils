@@ -42,7 +42,9 @@ body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
-  transition: background 180ms ease, color 180ms ease;
+  transition:
+    background 180ms ease,
+    color 180ms ease;
 }
 
 #root {

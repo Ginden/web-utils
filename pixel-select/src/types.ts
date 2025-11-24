@@ -27,12 +27,4 @@ export type RingLayoutConfig = {
   pcbRatio: number;
 };
 
-export type OutputFormat =
-  | 'rgb'
-  | 'bgr'
-  | 'gbr'
-  | 'arduino'
-  | 'esphome_static'
-  | 'png'
-  | 'png_bitmap_8x8'
-  | 'wled_udp';
+export type OutputFormat = 'rgb' | 'bgr' | 'gbr' | 'arduino' | 'esphome_static' | 'png' | 'png_bitmap_8x8' | 'wled_udp';

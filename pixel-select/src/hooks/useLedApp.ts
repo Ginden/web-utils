@@ -12,7 +12,12 @@ import {
   sanitizeLedColors,
 } from '../utils/ledState';
 import type { DisplayType, HistoryEntry, OutputFormat, RingLayoutConfig, RgbColor } from '../types';
-import { buildDefaultFormatConfig, formatDefinitions, generateOutputForFormat, getFormatDefinition } from '../output/formats';
+import {
+  buildDefaultFormatConfig,
+  formatDefinitions,
+  generateOutputForFormat,
+  getFormatDefinition,
+} from '../output/formats';
 import { generateMatrixBitmapDataUrl } from '../output/png';
 
 const generateArduinoOutput = (colors: RgbColor[]) => {
@@ -27,9 +32,7 @@ export const useLedApp = () => {
   const [ringLeds, setRingLeds] = useState<number>(DEFAULT_RING_LED_COUNT);
   const [matrixWidth, setMatrixWidth] = useState<number>(DEFAULT_MATRIX_WIDTH);
   const [matrixHeight, setMatrixHeight] = useState<number>(DEFAULT_MATRIX_HEIGHT);
-  const [ledColors, setLedColors] = useState<RgbColor[]>(() =>
-    sanitizeLedColors([], DEFAULT_RING_LED_COUNT),
-  );
+  const [ledColors, setLedColors] = useState<RgbColor[]>(() => sanitizeLedColors([], DEFAULT_RING_LED_COUNT));
   const [currentColor, setCurrentColor] = useState<string>('#FF0000');
   const [outputValue, setOutputValue] = useState<string>('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -41,8 +44,8 @@ export const useLedApp = () => {
     pcbRatio: 0.035,
   });
   const [selectedFormat, setSelectedFormat] = useState<OutputFormat>('rgb');
-  const [formatConfigs, setFormatConfigs] = useState<Record<OutputFormat, Record<string, unknown>>>(
-    () => buildDefaultFormatConfig(),
+  const [formatConfigs, setFormatConfigs] = useState<Record<OutputFormat, Record<string, unknown>>>(() =>
+    buildDefaultFormatConfig(),
   );
   const [outputPreviewUrl, setOutputPreviewUrl] = useState<string | undefined>(undefined);
   const [hashInitialized, setHashInitialized] = useState(false);
@@ -156,10 +159,7 @@ export const useLedApp = () => {
     const port = Number.isFinite(cfg.port) ? Number(cfg.port) : undefined;
 
     if (ip || port !== undefined) {
-      localStorage.setItem(
-        WLED_ENDPOINT_STORAGE_KEY,
-        JSON.stringify({ ip, port }),
-      );
+      localStorage.setItem(WLED_ENDPOINT_STORAGE_KEY, JSON.stringify({ ip, port }));
     } else {
       localStorage.removeItem(WLED_ENDPOINT_STORAGE_KEY);
     }
@@ -261,8 +261,7 @@ export const useLedApp = () => {
     setRotation(entry.rotation || 0);
     setShowLabels(entry.showLabels === undefined ? true : entry.showLabels);
 
-    const ledCount =
-      entry.displayType === 'ring' ? entry.ringLeds : entry.matrixWidth * entry.matrixHeight;
+    const ledCount = entry.displayType === 'ring' ? entry.ringLeds : entry.matrixWidth * entry.matrixHeight;
     setLedColors(sanitizeLedColors(entry.ledColors, ledCount));
   }, []);
 

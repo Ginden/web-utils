@@ -25,9 +25,7 @@ interface ConfigPanelProps {
   selectedFormat: OutputFormat;
   onSelectFormat: React.Dispatch<React.SetStateAction<OutputFormat>>;
   formatConfigs: Record<OutputFormat, Record<string, unknown>>;
-  onFormatConfigsChange: React.Dispatch<
-    React.SetStateAction<Record<OutputFormat, Record<string, unknown>>>
-  >;
+  onFormatConfigsChange: React.Dispatch<React.SetStateAction<Record<OutputFormat, Record<string, unknown>>>>;
 }
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({
@@ -61,10 +59,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   const rawActiveFormat = formatDefinitions.find((f) => f.id === selectedFormat);
   const fallbackFormat = formatDefinitions.find(formatAllowed) ?? formatDefinitions[0];
   const activeFormat = rawActiveFormat && formatAllowed(rawActiveFormat) ? rawActiveFormat : fallbackFormat;
-  const activeConfig = (formatConfigs[activeFormat.id] ?? activeFormat.defaultConfig) as Record<
-    string,
-    unknown
-  >;
+  const activeConfig = (formatConfigs[activeFormat.id] ?? activeFormat.defaultConfig) as Record<string, unknown>;
   const isBitmapFormat = activeFormat.id === 'png_bitmap_8x8';
   const previewUrl = isBitmapFormat ? outputPreviewUrl : undefined;
   const previewWrapperRef = useRef<HTMLDivElement | null>(null);
@@ -147,11 +142,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
       <div className="grid two">
         <div className="field">
           <label className="label">Rotation</label>
-          <select
-            className="control"
-            value={rotation}
-            onChange={(e) => onRotationChange(parseInt(e.target.value, 10))}
-          >
+          <select className="control" value={rotation} onChange={(e) => onRotationChange(parseInt(e.target.value, 10))}>
             {rotationOptions.map((angle) => (
               <option key={angle} value={angle}>
                 {angle}°
@@ -168,7 +159,12 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
       <div className="field">
         <label className="label">Current Color</label>
         <div className="color-row">
-          <input className="control color" type="color" value={currentColor} onChange={(e) => onColorChange(e.target.value)} />
+          <input
+            className="control color"
+            type="color"
+            value={currentColor}
+            onChange={(e) => onColorChange(e.target.value)}
+          />
           <div className="color-value">{currentColor.toUpperCase()}</div>
         </div>
       </div>
