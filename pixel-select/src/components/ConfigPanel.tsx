@@ -28,6 +28,7 @@ interface ConfigPanelProps {
   onSelectFormat: (next: OutputFormat) => void;
   formatConfigs: Record<OutputFormat, Record<string, unknown>>;
   onFormatConfigsChange: React.Dispatch<React.SetStateAction<Record<OutputFormat, Record<string, unknown>>>>;
+  onRotateMatrixPixels: (angle: 90 | 180 | 270) => void;
 }
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({
@@ -56,6 +57,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   onSelectFormat,
   formatConfigs,
   onFormatConfigsChange,
+  onRotateMatrixPixels,
 }) => {
   const rotationOptions = [0, 45, 90, 135, 180, 225, 270, 315];
   const formatAllowed = (fmt: (typeof formatDefinitions)[number]) =>
@@ -156,6 +158,17 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
             />
           </div>
           <p className="muted span-two">Total LEDs: {matrixWidth * matrixHeight}</p>
+          <div className="span-two">
+            <div className="label">Rotate pixels</div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {[90, 180, 270].map((angle) => (
+                <button key={angle} className="btn ghost" type="button" onClick={() => onRotateMatrixPixels(angle as 90 | 180 | 270)}>
+                  {angle}°
+                </button>
+              ))}
+            </div>
+            <p className="muted">Applies to pixel data (swaps width/height on 90°/270°).</p>
+          </div>
         </div>
       )}
 

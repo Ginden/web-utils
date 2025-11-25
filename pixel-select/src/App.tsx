@@ -46,6 +46,7 @@ const App: React.FC = () => {
       setStripLeds,
       setMatrixWidth,
       setMatrixHeight,
+      rotateMatrixPixels,
       setCurrentColor,
       setRotation,
       setShowLabels,
@@ -109,6 +110,7 @@ const App: React.FC = () => {
             onStripLedsChange={setStripLeds}
             onMatrixWidthChange={setMatrixWidth}
             onMatrixHeightChange={setMatrixHeight}
+            onRotateMatrixPixels={rotateMatrixPixels}
             currentColor={currentColor}
             onColorChange={setCurrentColor}
             onOutputRequest={handleOutputRequest}

@@ -87,6 +87,47 @@ export const useLedApp = () => {
     }
   }, []);
 
+  const rotateMatrixPixels = useCallback(
+    (angle: 90 | 180 | 270) => {
+      if (displayType !== 'matrix') return;
+      const w = matrixWidth;
+      const h = matrixHeight;
+      const ledCount = getLedCount('matrix', ringLeds, w, h, stripLeds);
+      const safeColors = sanitizeLedColors(ledColors, ledCount);
+
+      const swap = angle % 180 !== 0;
+      const newW = swap ? h : w;
+      const newH = swap ? w : h;
+      const rotated: RgbColor[] = Array.from({ length: newW * newH }, () => [0, 0, 0]);
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = y * w + x;
+          const color = safeColors[idx] || [0, 0, 0];
+          let newX = x;
+          let newY = y;
+          if (angle === 90) {
+            newX = h - 1 - y;
+            newY = x;
+          } else if (angle === 180) {
+            newX = w - 1 - x;
+            newY = h - 1 - y;
+          } else if (angle === 270) {
+            newX = y;
+            newY = w - 1 - x;
+          }
+          const newIdx = newY * newW + newX;
+          rotated[newIdx] = color;
+        }
+      }
+
+      setMatrixWidth(newW);
+      setMatrixHeight(newH);
+      setLedColors(rotated);
+    },
+    [displayType, ledColors, matrixHeight, matrixWidth, ringLeds, stripLeds],
+  );
+
   const previewUrl = useMemo(() => {
     if (selectedFormat !== 'png_bitmap_8x8' || displayType !== 'matrix') return undefined;
     const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight, stripLeds);
@@ -372,6 +413,7 @@ export const useLedApp = () => {
       setLedColors,
       setSelectedFormat: handleSelectFormat,
       setFormatConfigs,
+      rotateMatrixPixels,
     },
   };
 };
