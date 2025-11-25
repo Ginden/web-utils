@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Display from './components/Display';
 import ConfigPanel from './components/ConfigPanel';
 import HistoryPanel from './components/HistoryPanel';
+import ImageImportModal from './components/ImageImportModal';
 import './App.css';
 import { useLedApp } from './hooks/useLedApp';
 
@@ -57,8 +58,10 @@ const App: React.FC = () => {
       loadFromHistory,
       setSelectedFormat,
       setFormatConfigs,
+      setLedColors,
     },
   } = useLedApp();
+  const [showImageImport, setShowImageImport] = useState(false);
 
   return (
     <div className="app-container">
@@ -111,6 +114,7 @@ const App: React.FC = () => {
             onMatrixWidthChange={setMatrixWidth}
             onMatrixHeightChange={setMatrixHeight}
             onRotateMatrixPixels={rotateMatrixPixels}
+            onOpenImageImport={() => setShowImageImport(true)}
             currentColor={currentColor}
             onColorChange={setCurrentColor}
             onOutputRequest={handleOutputRequest}
@@ -130,6 +134,16 @@ const App: React.FC = () => {
           <HistoryPanel history={history} onLoadHistory={loadFromHistory} onDeleteHistory={handleDeleteFromHistory} />
         </div>
       </div>
+      <ImageImportModal
+        isOpen={showImageImport && displayType === 'matrix'}
+        onClose={() => setShowImageImport(false)}
+        matrixWidth={matrixWidth}
+        matrixHeight={matrixHeight}
+        onApply={(colors) => {
+          setLedColors(colors);
+          setShowImageImport(false);
+        }}
+      />
     </div>
   );
 };

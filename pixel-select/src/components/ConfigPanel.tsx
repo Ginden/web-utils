@@ -13,6 +13,7 @@ interface ConfigPanelProps {
   onStripLedsChange: React.Dispatch<React.SetStateAction<number>>;
   onMatrixWidthChange: React.Dispatch<React.SetStateAction<number>>;
   onMatrixHeightChange: React.Dispatch<React.SetStateAction<number>>;
+  onOpenImageImport: () => void;
   currentColor: string;
   onColorChange: React.Dispatch<React.SetStateAction<string>>;
   onOutputRequest: (format: OutputFormat) => void;
@@ -42,6 +43,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   onStripLedsChange,
   onMatrixWidthChange,
   onMatrixHeightChange,
+  onOpenImageImport,
   currentColor,
   onColorChange,
   onOutputRequest,
@@ -168,6 +170,13 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
               ))}
             </div>
             <p className="muted">Applies to pixel data (swaps width/height on 90°/270°).</p>
+          </div>
+          <div className="span-two">
+            <div className="label">Import from image</div>
+            <button className="btn ghost" type="button" onClick={onOpenImageImport}>
+              Upload image & crop
+            </button>
+            <p className="muted">Opens a modal with square crop and pixelated preview.</p>
           </div>
         </div>
       )}
