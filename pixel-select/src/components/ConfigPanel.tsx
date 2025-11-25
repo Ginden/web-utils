@@ -3,12 +3,14 @@ import type { OutputFormat } from '../types';
 import { formatDefinitions } from '../output/formats';
 
 interface ConfigPanelProps {
-  displayType: 'ring' | 'matrix';
+  displayType: 'ring' | 'matrix' | 'strip';
   ringLeds: number;
+  stripLeds: number;
   matrixWidth: number;
   matrixHeight: number;
-  onDisplayTypeChange: React.Dispatch<React.SetStateAction<'ring' | 'matrix'>>;
+  onDisplayTypeChange: (next: 'ring' | 'matrix' | 'strip') => void;
   onRingLedsChange: React.Dispatch<React.SetStateAction<number>>;
+  onStripLedsChange: React.Dispatch<React.SetStateAction<number>>;
   onMatrixWidthChange: React.Dispatch<React.SetStateAction<number>>;
   onMatrixHeightChange: React.Dispatch<React.SetStateAction<number>>;
   currentColor: string;
@@ -23,7 +25,7 @@ interface ConfigPanelProps {
   onShowLabelsChange: React.Dispatch<React.SetStateAction<boolean>>;
   isSummarizing: boolean; // New prop
   selectedFormat: OutputFormat;
-  onSelectFormat: React.Dispatch<React.SetStateAction<OutputFormat>>;
+  onSelectFormat: (next: OutputFormat) => void;
   formatConfigs: Record<OutputFormat, Record<string, unknown>>;
   onFormatConfigsChange: React.Dispatch<React.SetStateAction<Record<OutputFormat, Record<string, unknown>>>>;
 }
@@ -31,10 +33,12 @@ interface ConfigPanelProps {
 const ConfigPanel: React.FC<ConfigPanelProps> = ({
   displayType,
   ringLeds,
+  stripLeds,
   matrixWidth,
   matrixHeight,
   onDisplayTypeChange,
   onRingLedsChange,
+  onStripLedsChange,
   onMatrixWidthChange,
   onMatrixHeightChange,
   currentColor,
@@ -59,7 +63,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   const rawActiveFormat = formatDefinitions.find((f) => f.id === selectedFormat);
   const fallbackFormat = formatDefinitions.find(formatAllowed) ?? formatDefinitions[0];
   const activeFormat = rawActiveFormat && formatAllowed(rawActiveFormat) ? rawActiveFormat : fallbackFormat;
-  const activeConfig = (formatConfigs[activeFormat.id] ?? activeFormat.defaultConfig) as Record<string, unknown>;
+  const activeConfig = (formatConfigs[activeFormat.id as OutputFormat] ??
+    activeFormat.defaultConfig) as typeof activeFormat.defaultConfig;
   const isBitmapFormat = activeFormat.id === 'png_bitmap_8x8';
   const previewUrl = isBitmapFormat ? outputPreviewUrl : undefined;
   const previewWrapperRef = useRef<HTMLDivElement | null>(null);
@@ -93,10 +98,11 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
         <select
           className="control"
           value={displayType}
-          onChange={(e) => onDisplayTypeChange(e.target.value as 'ring' | 'matrix')}
+          onChange={(e) => onDisplayTypeChange(e.target.value as 'ring' | 'matrix' | 'strip')}
         >
           <option value="ring">Ring</option>
           <option value="matrix">Matrix</option>
+          <option value="strip">Strip</option>
         </select>
       </div>
 
@@ -110,6 +116,20 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
             value={ringLeds}
             onChange={(e) => onRingLedsChange(parseInt(e.target.value, 10))}
           />
+        </div>
+      )}
+
+      {displayType === 'strip' && (
+        <div className="field">
+          <label className="label">Number of LEDs</label>
+          <input
+            className="control"
+            type="number"
+            min="1"
+            value={stripLeds}
+            onChange={(e) => onStripLedsChange(parseInt(e.target.value, 10))}
+          />
+          <p className="muted">Rendered as a zig-zag with up to 16 LEDs per row.</p>
         </div>
       )}
 

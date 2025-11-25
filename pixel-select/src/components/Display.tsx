@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { RgbColor, RingLayoutConfig } from '../types';
+import { MAX_STRIP_ROW_LENGTH } from '../utils/ledState';
 import { rgbToHashHex } from '../utils/colorUtils'; // Import rgbToHashHex
 
 interface DisplayProps {
-  displayType: 'ring' | 'matrix';
+  displayType: 'ring' | 'matrix' | 'strip';
   ringLeds: number;
+  stripLeds: number;
   matrixWidth: number;
   matrixHeight: number;
   ledColors: RgbColor[]; // Array of RgbColor arrays
@@ -24,6 +26,7 @@ const getContrastingColor = (rgb: RgbColor) => {
 const Display: React.FC<DisplayProps> = ({
   displayType,
   ringLeds,
+  stripLeds,
   matrixWidth,
   matrixHeight,
   ledColors,
@@ -101,6 +104,63 @@ const Display: React.FC<DisplayProps> = ({
     const centerY = svgHeight / 2;
     return { cellSize, padding, pcbMargin, svgWidth, svgHeight, centerX, centerY };
   }, [dimensions, matrixHeight, matrixWidth]);
+
+  const stripLayout = useMemo(() => {
+    const size = Math.max(220, Math.min(dimensions.width, dimensions.height));
+    const padding = Math.max(3, size * 0.012);
+    const pcbMargin = Math.max(6, size * 0.03);
+    const cols = Math.max(1, Math.min(MAX_STRIP_ROW_LENGTH, stripLeds));
+    const rows = Math.max(1, Math.ceil(stripLeds / cols));
+    const maxCells = cols;
+    const available = size - pcbMargin * 2;
+    const cellSize = Math.max(10, Math.min(34, available / maxCells - padding));
+    const maxRowWidth = cols * (cellSize + padding) - padding;
+    const rowHeight = cellSize + padding;
+    const idealSkew = cellSize * (4 / Math.max(1, rows));
+    const rowSkew = Math.max(cellSize * 0.25, Math.min(cellSize * 0.7, idealSkew));
+    const maxOffset = Math.min(rowSkew * Math.max(0, rows - 1), maxRowWidth * 0.4);
+    const contentHeight = rows * rowHeight - padding;
+    const svgWidth = maxRowWidth + pcbMargin * 2 + maxOffset;
+    const svgHeight = contentHeight + pcbMargin * 2;
+    const centerX = svgWidth / 2;
+    const centerY = svgHeight / 2;
+    return {
+      cellSize,
+      padding,
+      pcbMargin,
+      svgWidth,
+      svgHeight,
+      centerX,
+      centerY,
+      cols,
+      rows,
+      rowHeight,
+      maxRowWidth,
+      rowSkew,
+      maxOffset,
+    };
+  }, [dimensions, stripLeds]);
+
+  const stripPositions = useMemo(() => {
+    const { cellSize, padding, pcbMargin, cols, rowHeight, maxRowWidth, rowSkew } = stripLayout;
+
+    return Array.from({ length: stripLeds }).map((_, index) => {
+      const row = Math.floor(index / cols);
+      const indexInRow = index - row * cols;
+      const rowWidth = Math.min(cols, stripLeds - row * cols);
+      const col = row % 2 === 0 ? indexInRow : rowWidth - 1 - indexInRow;
+      const rowVisualWidth = rowWidth * (cellSize + padding) - padding;
+      const xOffset = row * rowSkew;
+      const anchor = row % 2 === 0 ? 0 : maxRowWidth - rowVisualWidth;
+      const xStart = pcbMargin + anchor + xOffset;
+      const yStart = pcbMargin + row * rowHeight;
+      const cx = xStart + col * (cellSize + padding) + cellSize / 2;
+      const cy = yStart + cellSize / 2;
+      return { cx, cy, row, col, rowWidth, rowVisualWidth, xStart, yStart };
+    });
+  }, [stripLayout, stripLeds]);
+
+  const stripPathPoints = useMemo(() => stripPositions.map((p) => `${p.cx},${p.cy}`).join(' '), [stripPositions]);
 
   const renderRing = () => {
     const { ledSize, ringRadius, pcbWidth, size, centerX, centerY, scale } = ringLayout;
@@ -253,12 +313,80 @@ const Display: React.FC<DisplayProps> = ({
     );
   };
 
+  const renderStrip = () => {
+    const { cellSize, svgWidth, svgHeight, centerX, centerY } = stripLayout;
+
+    const positions = stripPositions;
+    const pathPoints = stripPathPoints;
+    const trackWidth = Math.max(8, cellSize * 1.2);
+
+    return (
+      <svg width="100%" height="100%" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="xMidYMid meet">
+        <g transform={`rotate(${rotation}, ${centerX}, ${centerY})`}>
+          <polyline
+            points={pathPoints}
+            fill="none"
+            stroke="#323232"
+            strokeWidth={trackWidth * 1.25}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <polyline
+            points={pathPoints}
+            fill="none"
+            stroke="#555"
+            strokeWidth={trackWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {positions.map((pos, index) => {
+            const color = ledColors[index] || [0, 0, 0];
+            const hexColor = rgbToHashHex(color);
+            const x = pos.cx - cellSize / 2;
+            const y = pos.cy - cellSize / 2;
+
+            return (
+              <g key={`led-group-${index}`}>
+                <rect
+                  x={x}
+                  y={y}
+                  width={cellSize}
+                  height={cellSize}
+                  fill={hexColor}
+                  stroke="#333"
+                  strokeWidth="1"
+                  onClick={() => onLedClick(index)}
+                  style={{ cursor: 'pointer' }}
+                  rx={Math.max(2, cellSize * 0.2)}
+                />
+                {showLabels && (
+                  <text
+                    x={pos.cx}
+                    y={pos.cy}
+                    dy=".3em"
+                    textAnchor="middle"
+                    fill={getContrastingColor(color)}
+                    pointerEvents="none"
+                    fontSize="10"
+                    transform={`rotate(${-rotation}, ${pos.cx}, ${pos.cy})`}
+                  >
+                    {index}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+    );
+  };
+
   return (
     <div
       ref={containerRef}
       style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
     >
-      {displayType === 'ring' ? renderRing() : renderMatrix()}
+      {displayType === 'ring' ? renderRing() : displayType === 'matrix' ? renderMatrix() : renderStrip()}
     </div>
   );
 };

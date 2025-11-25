@@ -1,4 +1,4 @@
-export type DisplayType = 'ring' | 'matrix';
+export type DisplayType = 'ring' | 'matrix' | 'strip';
 
 export type RgbColor = [number, number, number];
 
@@ -17,6 +17,10 @@ export type HistoryEntry = {
       displayType: 'matrix';
       matrixWidth: number;
       matrixHeight: number;
+    }
+  | {
+      displayType: 'strip';
+      stripLeds: number;
     }
 );
 

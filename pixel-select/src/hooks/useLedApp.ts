@@ -5,6 +5,7 @@ import {
   DEFAULT_MATRIX_HEIGHT,
   DEFAULT_MATRIX_WIDTH,
   DEFAULT_RING_LED_COUNT,
+  DEFAULT_STRIP_LED_COUNT,
   getLedCount,
   parseNumber,
   parsePositiveInt,
@@ -30,6 +31,7 @@ const generateArduinoOutput = (colors: RgbColor[]) => {
 export const useLedApp = () => {
   const [displayType, setDisplayType] = useState<DisplayType>('ring');
   const [ringLeds, setRingLeds] = useState<number>(DEFAULT_RING_LED_COUNT);
+  const [stripLeds, setStripLeds] = useState<number>(DEFAULT_STRIP_LED_COUNT);
   const [matrixWidth, setMatrixWidth] = useState<number>(DEFAULT_MATRIX_WIDTH);
   const [matrixHeight, setMatrixHeight] = useState<number>(DEFAULT_MATRIX_HEIGHT);
   const [ledColors, setLedColors] = useState<RgbColor[]>(() => sanitizeLedColors([], DEFAULT_RING_LED_COUNT));
@@ -72,10 +74,8 @@ export const useLedApp = () => {
   const handleDisplayTypeChange = useCallback((next: DisplayType) => {
     setDisplayType(next);
     setSelectedFormat((prev) => {
-      const allowed = formatDefinitions.filter(
-        (fmt) => !fmt.displayTypes || fmt.displayTypes.includes(next),
-      );
-      return allowed.some((f) => f.id === prev) ? prev : allowed[0]?.id ?? 'rgb';
+      const allowed = formatDefinitions.filter((fmt) => !fmt.displayTypes || fmt.displayTypes.includes(next));
+      return (allowed.some((f) => f.id === prev) ? prev : (allowed[0]?.id ?? 'rgb')) as OutputFormat;
     });
   }, []);
 
@@ -89,33 +89,25 @@ export const useLedApp = () => {
 
   const previewUrl = useMemo(() => {
     if (selectedFormat !== 'png_bitmap_8x8' || displayType !== 'matrix') return undefined;
-    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
+    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight, stripLeds);
     const safeColors = sanitizeLedColors(ledColors, ledCount);
     return generateMatrixBitmapDataUrl(safeColors, matrixWidth, matrixHeight) || undefined;
-  }, [displayType, ledColors, matrixHeight, matrixWidth, ringLeds, selectedFormat]);
+  }, [displayType, ledColors, matrixHeight, matrixWidth, ringLeds, selectedFormat, stripLeds]);
 
   const eagerOutputValue = useMemo(() => {
     const def = getFormatDefinition(selectedFormat);
     if (!def?.eager) return undefined;
-    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
+    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight, stripLeds);
     const safeColors = sanitizeLedColors(ledColors, ledCount);
     return generateOutputForFormat(safeColors, selectedFormat, formatConfigs, {
       displayType,
       ringLeds,
       matrixWidth,
       matrixHeight,
+      stripLeds,
       rotation,
     });
-  }, [
-    displayType,
-    formatConfigs,
-    ledColors,
-    matrixHeight,
-    matrixWidth,
-    ringLeds,
-    rotation,
-    selectedFormat,
-  ]);
+  }, [displayType, formatConfigs, ledColors, matrixHeight, matrixWidth, ringLeds, rotation, selectedFormat, stripLeds]);
 
   const outputValueToShow = eagerOutputValue ?? outputValue;
 
@@ -136,7 +128,7 @@ export const useLedApp = () => {
 
     // Defer all state updates that depend on URL parameters
     setTimeout(() => {
-      if (type === 'ring' || type === 'matrix') {
+      if (type === 'ring' || type === 'matrix' || type === 'strip') {
         handleDisplayTypeChange(type);
 
         let initialLedColors: RgbColor[] = [];
@@ -150,7 +142,7 @@ export const useLedApp = () => {
           const parsedColors = colorsParam ? colorsParam.split(',').map(hexToRgb) : undefined;
 
           initialLedColors = sanitizeLedColors(parsedColors, ringLedCount);
-        } else {
+        } else if (type === 'matrix') {
           const parsedWidth = parsePositiveInt(params.get('width'), DEFAULT_MATRIX_WIDTH);
           const parsedHeight = parsePositiveInt(params.get('height'), DEFAULT_MATRIX_HEIGHT);
 
@@ -161,6 +153,13 @@ export const useLedApp = () => {
           const parsedColors = colorsParam ? colorsParam.split(',').map(hexToRgb) : undefined;
 
           initialLedColors = sanitizeLedColors(parsedColors, parsedWidth * parsedHeight);
+        } else {
+          const parsedStrip = parsePositiveInt(params.get('leds'), DEFAULT_STRIP_LED_COUNT);
+          setStripLeds(parsedStrip);
+
+          const colorsParam = params.get('colors');
+          const parsedColors = colorsParam ? colorsParam.split(',').map(hexToRgb) : undefined;
+          initialLedColors = sanitizeLedColors(parsedColors, parsedStrip);
         }
 
         setLedColors(initialLedColors); // Set once after determining size
@@ -176,14 +175,14 @@ export const useLedApp = () => {
   useEffect(() => {
     if (!hashInitialized) return;
 
-    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
+    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight, stripLeds);
     const colorsForHash = sanitizeLedColors(ledColors, ledCount);
     const params = new URLSearchParams();
 
     params.set('type', displayType);
 
-    if (displayType === 'ring') {
-      params.set('leds', ringLeds.toString());
+    if (displayType === 'ring' || displayType === 'strip') {
+      params.set('leds', (displayType === 'ring' ? ringLeds : stripLeds).toString());
     } else {
       params.set('width', matrixWidth.toString());
       params.set('height', matrixHeight.toString());
@@ -197,7 +196,7 @@ export const useLedApp = () => {
     if (window.location.hash !== `#${hash}`) {
       window.location.hash = hash;
     }
-  }, [displayType, ringLeds, matrixWidth, matrixHeight, rotation, showLabels, ledColors, hashInitialized]);
+  }, [displayType, ringLeds, matrixWidth, matrixHeight, rotation, showLabels, ledColors, hashInitialized, stripLeds]);
 
   useEffect(() => {
     const cfg = formatConfigs.wled_udp as { ip?: unknown; port?: unknown } | undefined;
@@ -214,7 +213,7 @@ export const useLedApp = () => {
 
   const handleLedClick = useCallback(
     (index: number) => {
-      const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
+      const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight, stripLeds);
       setLedColors((previous) => {
         const safeColors = sanitizeLedColors(previous, ledCount);
         const newColors = [...safeColors];
@@ -222,13 +221,13 @@ export const useLedApp = () => {
         return newColors;
       });
     },
-    [currentColor, displayType, matrixHeight, matrixWidth, ringLeds],
+    [currentColor, displayType, matrixHeight, matrixWidth, ringLeds, stripLeds],
   );
 
   const handleSaveToHistory = useCallback(async () => {
     setIsSummarizing(true);
 
-    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
+    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight, stripLeds);
     const safeColors = sanitizeLedColors(ledColors, ledCount);
     const arduinoOutput = generateArduinoOutput(safeColors);
     const summary = await getSummary(arduinoOutput);
@@ -239,11 +238,16 @@ export const useLedApp = () => {
             displayType,
             ringLeds,
           }
-        : {
-            displayType,
-            matrixWidth,
-            matrixHeight,
-          }),
+        : displayType === 'matrix'
+          ? {
+              displayType,
+              matrixWidth,
+              matrixHeight,
+            }
+          : {
+              displayType,
+              stripLeds,
+            }),
       ledColors: safeColors,
       rotation,
       showLabels,
@@ -256,7 +260,7 @@ export const useLedApp = () => {
     setHistory(updatedHistory);
     localStorage.setItem('led_history', JSON.stringify(updatedHistory));
     setIsSummarizing(false);
-  }, [displayType, history, ledColors, matrixHeight, matrixWidth, ringLeds, rotation, showLabels]);
+  }, [displayType, history, ledColors, matrixHeight, matrixWidth, ringLeds, rotation, showLabels, stripLeds]);
 
   const handleDeleteFromHistory = useCallback(
     (timestamp: string) => {
@@ -272,14 +276,21 @@ export const useLedApp = () => {
       handleDisplayTypeChange(entry.displayType);
       if (entry.displayType === 'ring') {
         setRingLeds(entry.ringLeds);
-      } else {
+      } else if (entry.displayType === 'matrix') {
         setMatrixWidth(entry.matrixWidth);
         setMatrixHeight(entry.matrixHeight);
+      } else {
+        setStripLeds(entry.stripLeds);
       }
       setRotation(entry.rotation || 0);
       setShowLabels(entry.showLabels === undefined ? true : entry.showLabels);
 
-      const ledCount = entry.displayType === 'ring' ? entry.ringLeds : entry.matrixWidth * entry.matrixHeight;
+      const ledCount =
+        entry.displayType === 'ring'
+          ? entry.ringLeds
+          : entry.displayType === 'matrix'
+            ? entry.matrixWidth * entry.matrixHeight
+            : entry.stripLeds;
       setLedColors(sanitizeLedColors(entry.ledColors, ledCount));
     },
     [handleDisplayTypeChange],
@@ -287,7 +298,7 @@ export const useLedApp = () => {
 
   const handleOutputRequest = useCallback(
     (format: OutputFormat) => {
-      const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight);
+      const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight, stripLeds);
       const safeColors = sanitizeLedColors(ledColors, ledCount);
 
       // Special handling for matrix PNG bitmap to support preview + proper downloads
@@ -316,11 +327,12 @@ export const useLedApp = () => {
           ringLeds,
           matrixWidth,
           matrixHeight,
+          stripLeds,
           rotation,
         }),
       );
     },
-    [displayType, formatConfigs, ledColors, matrixHeight, matrixWidth, ringLeds, rotation, previewUrl],
+    [displayType, formatConfigs, ledColors, matrixHeight, matrixWidth, ringLeds, rotation, previewUrl, stripLeds],
   );
 
   return {
@@ -340,10 +352,12 @@ export const useLedApp = () => {
       selectedFormat,
       formatConfigs,
       outputPreviewUrl: previewUrl,
+      stripLeds,
     },
     actions: {
       setDisplayType: handleDisplayTypeChange,
       setRingLeds,
+      setStripLeds,
       setMatrixWidth,
       setMatrixHeight,
       setCurrentColor,

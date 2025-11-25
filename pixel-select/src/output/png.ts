@@ -1,4 +1,5 @@
 import type { DisplayType, RgbColor } from '../types';
+import { MAX_STRIP_ROW_LENGTH } from '../utils/ledState';
 
 type PngOptions = {
   resolution: number;
@@ -8,6 +9,7 @@ type PngOptions = {
   ringLeds: number;
   matrixWidth: number;
   matrixHeight: number;
+  stripLeds: number;
 };
 
 const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
@@ -101,6 +103,97 @@ const drawMatrix = (
   ctx.restore();
 };
 
+const drawStrip = (
+  ctx: CanvasRenderingContext2D,
+  colors: RgbColor[],
+  { resolution, rotation, stripLeds }: PngOptions,
+) => {
+  const padding = clamp(resolution * 0.01, 2, 12);
+  const margin = clamp(resolution * 0.05, 8, 40);
+  const cols = Math.max(1, Math.min(MAX_STRIP_ROW_LENGTH, stripLeds));
+  const rows = Math.max(1, Math.ceil(stripLeds / cols));
+  const cellSize = clamp((resolution - margin * 2) / cols - padding, 12, 42);
+  const maxRowWidth = cols * (cellSize + padding) - padding;
+  const rowHeight = cellSize + padding;
+  const idealSkew = cellSize * (4 / Math.max(1, rows));
+  const rowSkew = clamp(idealSkew, cellSize * 0.25, cellSize * 0.7);
+  const maxOffset = Math.min(rowSkew * Math.max(0, rows - 1), maxRowWidth * 0.4);
+  const contentHeight = rows * rowHeight - padding;
+  const svgWidth = maxRowWidth + margin * 2 + maxOffset;
+  const svgHeight = contentHeight + margin * 2;
+  const offsetX = (resolution - svgWidth) / 2;
+  const offsetY = (resolution - svgHeight) / 2;
+  const centerX = offsetX + svgWidth / 2;
+  const centerY = offsetY + svgHeight / 2;
+
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate((rotation * Math.PI) / 180);
+  ctx.translate(-centerX, -centerY);
+
+  const points: { cx: number; cy: number }[] = [];
+
+  for (let index = 0; index < stripLeds; index++) {
+    const row = Math.floor(index / cols);
+    const indexInRow = index - row * cols;
+    const rowWidth = Math.min(cols, stripLeds - row * cols);
+    const col = row % 2 === 0 ? indexInRow : rowWidth - 1 - indexInRow;
+    const rowVisualWidth = rowWidth * (cellSize + padding) - padding;
+    const xOffset = row * rowSkew;
+    const anchor = row % 2 === 0 ? 0 : maxRowWidth - rowVisualWidth;
+    const xStart = offsetX + anchor + xOffset;
+    const yStart = offsetY + row * rowHeight;
+    const cx = xStart + col * (cellSize + padding) + cellSize / 2;
+    const cy = yStart + cellSize / 2;
+    points.push({ cx, cy });
+  }
+
+  const trackWidth = Math.max(8, cellSize * 1.2);
+  ctx.strokeStyle = '#323232';
+  ctx.lineWidth = trackWidth * 1.25;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  points.forEach(({ cx, cy }, idx) => {
+    if (idx === 0) ctx.moveTo(cx, cy);
+    else ctx.lineTo(cx, cy);
+  });
+  ctx.stroke();
+
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = trackWidth;
+  ctx.beginPath();
+  points.forEach(({ cx, cy }, idx) => {
+    if (idx === 0) ctx.moveTo(cx, cy);
+    else ctx.lineTo(cx, cy);
+  });
+  ctx.stroke();
+
+  for (let index = 0; index < stripLeds; index++) {
+    const row = Math.floor(index / cols);
+    const indexInRow = index - row * cols;
+    const rowWidth = Math.min(cols, stripLeds - row * cols);
+    const col = row % 2 === 0 ? indexInRow : rowWidth - 1 - indexInRow;
+    const rowVisualWidth = rowWidth * (cellSize + padding) - padding;
+    const xOffset = row * rowSkew;
+    const anchor = row % 2 === 0 ? 0 : maxRowWidth - rowVisualWidth;
+    const xStart = offsetX + anchor + xOffset;
+    const yStart = offsetY + row * rowHeight;
+    const x = xStart + col * (cellSize + padding);
+    const y = yStart;
+    const [r, g, b] = colors[index] || [0, 0, 0];
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = Math.max(1, cellSize * 0.06);
+    ctx.beginPath();
+    ctx.roundRect(x, y, cellSize, cellSize, cellSize * 0.2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  ctx.restore();
+};
+
 export const generatePngDataUrl = (colors: RgbColor[], options: PngOptions) => {
   const resolution = clamp(options.resolution, 128, 4096);
   const canvas = document.createElement('canvas');
@@ -114,8 +207,10 @@ export const generatePngDataUrl = (colors: RgbColor[], options: PngOptions) => {
 
   if (options.displayType === 'ring') {
     drawRing(ctx, colors, options);
-  } else {
+  } else if (options.displayType === 'matrix') {
     drawMatrix(ctx, colors, options);
+  } else {
+    drawStrip(ctx, colors, options);
   }
 
   return canvas.toDataURL('image/png');

@@ -10,21 +10,28 @@ export type FormatConfigRenderer<TConfig extends FormatConfig> = (props: {
   onChange: (config: TConfig) => void;
 }) => React.ReactNode;
 
-export type OutputFormatDefinition<TConfig extends FormatConfig = FormatConfig> = {
+export type OutputFormatDefinition = {
   id: OutputFormat;
   label: string;
   description?: string;
-  defaultConfig: TConfig;
+  defaultConfig: FormatConfig;
   /** Auto-generate output when inputs change (writes to textarea, no downloads). */
   eager?: boolean;
   /** Limit availability to specific display types. */
   displayTypes?: DisplayType[];
   generate: (
     colors: RgbColor[],
-    config: TConfig,
-    ctx?: { displayType: DisplayType; ringLeds: number; matrixWidth: number; matrixHeight: number; rotation: number },
+    config: FormatConfig,
+    ctx?: {
+      displayType: DisplayType;
+      ringLeds: number;
+      matrixWidth: number;
+      matrixHeight: number;
+      stripLeds: number;
+      rotation: number;
+    },
   ) => string;
-  renderConfig?: FormatConfigRenderer<TConfig>;
+  renderConfig?: FormatConfigRenderer<FormatConfig>;
 };
 
 type BufferConfig = { order: 'rgb' | 'bgr' | 'gbr' };
@@ -37,13 +44,14 @@ const bufferFormat = (
   label: string,
   order: BufferConfig['order'],
   description?: string,
-): OutputFormatDefinition<BufferConfig> => ({
+): OutputFormatDefinition => ({
   id,
   label,
   description,
   defaultConfig: { order },
-  generate: (colors, config: BufferConfig) => {
-    const indices = config.order === 'rgb' ? [0, 1, 2] : config.order === 'bgr' ? [2, 1, 0] : [1, 2, 0]; // gbr
+  generate: (colors: RgbColor[], config: FormatConfig) => {
+    const cfg = config as BufferConfig;
+    const indices = cfg.order === 'rgb' ? [0, 1, 2] : cfg.order === 'bgr' ? [2, 1, 0] : [1, 2, 0]; // gbr
     const output = colors.map((col) => `${col[indices[0]]}, ${col[indices[1]]}, ${col[indices[2]]}`).join(', ');
     return `[${output}]`;
   },
@@ -59,7 +67,8 @@ export const formatDefinitions: OutputFormatDefinition[] = [
     description: 'C array of CRGB objects',
     defaultConfig: {},
     eager: true,
-    generate: (colors) => `CRGB leds[] = {\n${colors.map(([r, g, b]) => `  CRGB(${r}, ${g}, ${b})`).join(',\n')}\n};`,
+    generate: (colors: RgbColor[]) =>
+      `CRGB leds[] = {\n${colors.map(([r, g, b]) => `  CRGB(${r}, ${g}, ${b})`).join(',\n')}\n};`,
   },
   {
     id: 'esphome_static',
@@ -69,11 +78,10 @@ export const formatDefinitions: OutputFormatDefinition[] = [
       effectName: 'StaticGenerated',
     },
     eager: true,
-    generate: (colors, config: EsphomeConfig) => {
+    generate: (colors: RgbColor[], config: FormatConfig) => {
+      const cfg = config as EsphomeConfig;
       const name =
-        typeof config?.effectName === 'string' && config.effectName.trim()
-          ? config.effectName.trim()
-          : 'StaticGenerated';
+        typeof cfg?.effectName === 'string' && cfg.effectName.trim() ? cfg.effectName.trim() : 'StaticGenerated';
       const lambdaLines = [
         'const uint8_t pixels[][3] = {',
         ...colors.map(([r, g, b]) => `  {${r}, ${g}, ${b}},`),
@@ -102,18 +110,21 @@ export const formatDefinitions: OutputFormatDefinition[] = [
 
       return YAML.stringify(tree, { blockQuote: 'folded' });
     },
-    renderConfig: ({ config, onChange }) => (
-      <div className="field">
-        <label className="label">Effect name</label>
-        <input
-          className="control"
-          type="text"
-          value={(config as EsphomeConfig).effectName ?? 'StaticGenerated'}
-          onChange={(e) => onChange({ ...config, effectName: e.target.value })}
-          placeholder="StaticGenerated"
-        />
-      </div>
-    ),
+    renderConfig: ({ config, onChange }: { config: FormatConfig; onChange: (cfg: FormatConfig) => void }) => {
+      const cfg = config as EsphomeConfig;
+      return (
+        <div className="field">
+          <label className="label">Effect name</label>
+          <input
+            className="control"
+            type="text"
+            value={cfg.effectName ?? 'StaticGenerated'}
+            onChange={(e) => onChange({ ...config, effectName: e.target.value })}
+            placeholder="StaticGenerated"
+          />
+        </div>
+      );
+    },
   },
   {
     id: 'png',
@@ -124,20 +135,27 @@ export const formatDefinitions: OutputFormatDefinition[] = [
       background: '#0f162c',
     },
     generate: (
-      colors,
-      config: PngConfig,
-      ctx?: { displayType: DisplayType; ringLeds: number; matrixWidth: number; matrixHeight: number; rotation: number },
+      colors: RgbColor[],
+      config: FormatConfig,
+      ctx?: {
+        displayType: DisplayType;
+        ringLeds: number;
+        matrixWidth: number;
+        matrixHeight: number;
+        stripLeds: number;
+        rotation: number;
+      },
     ) => {
+      const cfg = config as PngConfig;
       if (!ctx) return 'PNG generation needs display context';
       const url = generatePngDataUrl(colors, {
-        resolution: Number.isFinite(config?.resolution)
-          ? Math.max(64, Math.min(4096, Number(config.resolution)))
-          : 1024,
-        background: typeof config?.background === 'string' ? config.background : '#0f162c',
+        resolution: Number.isFinite(cfg?.resolution) ? Math.max(64, Math.min(4096, Number(cfg.resolution))) : 1024,
+        background: typeof cfg?.background === 'string' ? cfg.background : '#0f162c',
         displayType: ctx.displayType,
         ringLeds: ctx.ringLeds,
         matrixWidth: ctx.matrixWidth,
         matrixHeight: ctx.matrixHeight,
+        stripLeds: ctx.stripLeds,
         rotation: ctx.rotation,
       });
       if (!url) return 'Failed to generate PNG';
@@ -147,31 +165,34 @@ export const formatDefinitions: OutputFormatDefinition[] = [
       link.click();
       return 'PNG downloaded';
     },
-    renderConfig: ({ config, onChange }) => (
-      <div className="grid two">
-        <div className="field">
-          <label className="label">Resolution (px)</label>
-          <input
-            className="control"
-            type="number"
-            min={128}
-            max={4096}
-            step={64}
-            value={(config as PngConfig).resolution ?? 1024}
-            onChange={(e) => onChange({ ...config, resolution: parseInt(e.target.value, 10) })}
-          />
+    renderConfig: ({ config, onChange }: { config: FormatConfig; onChange: (cfg: FormatConfig) => void }) => {
+      const cfg = config as PngConfig;
+      return (
+        <div className="grid two">
+          <div className="field">
+            <label className="label">Resolution (px)</label>
+            <input
+              className="control"
+              type="number"
+              min={128}
+              max={4096}
+              step={64}
+              value={cfg.resolution ?? 1024}
+              onChange={(e) => onChange({ ...config, resolution: parseInt(e.target.value, 10) })}
+            />
+          </div>
+          <div className="field">
+            <label className="label">Background</label>
+            <input
+              className="control"
+              type="color"
+              value={cfg.background ?? '#0f162c'}
+              onChange={(e) => onChange({ ...config, background: e.target.value })}
+            />
+          </div>
         </div>
-        <div className="field">
-          <label className="label">Background</label>
-          <input
-            className="control"
-            type="color"
-            value={(config as PngConfig).background ?? '#0f162c'}
-            onChange={(e) => onChange({ ...config, background: e.target.value })}
-          />
-        </div>
-      </div>
-    ),
+      );
+    },
   },
   {
     id: 'png_bitmap_8x8',
@@ -181,9 +202,16 @@ export const formatDefinitions: OutputFormatDefinition[] = [
     eager: false,
     displayTypes: ['matrix'],
     generate: (
-      _colors,
-      _config: Record<string, never>,
-      ctx?: { displayType: DisplayType; ringLeds: number; matrixWidth: number; matrixHeight: number; rotation: number },
+      _colors: RgbColor[],
+      _config: FormatConfig,
+      ctx?: {
+        displayType: DisplayType;
+        ringLeds: number;
+        matrixWidth: number;
+        matrixHeight: number;
+        stripLeds: number;
+        rotation: number;
+      },
     ) => {
       if (!ctx || ctx.displayType !== 'matrix') return 'Uploadable PNG works only in matrix mode';
       return 'Use Generate to download PNG';
@@ -199,60 +227,64 @@ export const formatDefinitions: OutputFormatDefinition[] = [
       order: 'grb' as 'grb' | 'rgb' | 'bgr' | 'gbr',
     },
     eager: true,
-    generate: (colors, config: WledConfig) => {
-      const ip = typeof config?.ip === 'string' && config.ip.trim() ? config.ip.trim() : '192.168.1.100';
-      const port = Number.isFinite(config?.port) ? Number(config.port) : 19446;
-      const order = ['rgb', 'bgr', 'gbr', 'grb'].includes(config?.order)
-        ? (config.order as 'rgb' | 'bgr' | 'gbr' | 'grb')
+    generate: (colors: RgbColor[], config: FormatConfig) => {
+      const cfg = config as WledConfig;
+      const ip = typeof cfg?.ip === 'string' && cfg.ip.trim() ? cfg.ip.trim() : '192.168.1.100';
+      const port = Number.isFinite(cfg?.port) ? Number(cfg.port) : 19446;
+      const order = ['rgb', 'bgr', 'gbr', 'grb'].includes(cfg?.order)
+        ? (cfg.order as 'rgb' | 'bgr' | 'gbr' | 'grb')
         : 'grb';
       const indices =
         order === 'rgb' ? [0, 1, 2] : order === 'bgr' ? [2, 1, 0] : order === 'gbr' ? [1, 2, 0] : [1, 0, 2]; // grb default for WLED
       const hexBytes = colors
         .map((c) => indices.map((idx) => c[idx] ?? 0))
         .flat()
-        .map((v) => `\\x${(v & 0xff).toString(16).padStart(2, '0')}`)
+        .map((v: number) => `\\x${(v & 0xff).toString(16).padStart(2, '0')}`)
         .join('');
       const cmd = `printf '%b' '${hexBytes}' | nc -u -w1 -q0 ${ip} ${port}`;
       return cmd;
     },
-    renderConfig: ({ config, onChange }) => (
-      <div className="grid two">
-        <div className="field">
-          <label className="label">IP address</label>
-          <input
-            className="control"
-            type="text"
-            value={(config as WledConfig).ip ?? '192.168.1.100'}
-            onChange={(e) => onChange({ ...config, ip: e.target.value })}
-            placeholder="192.168.1.100"
-          />
+    renderConfig: ({ config, onChange }: { config: FormatConfig; onChange: (cfg: FormatConfig) => void }) => {
+      const cfg = config as WledConfig;
+      return (
+        <div className="grid two">
+          <div className="field">
+            <label className="label">IP address</label>
+            <input
+              className="control"
+              type="text"
+              value={cfg.ip ?? '192.168.1.100'}
+              onChange={(e) => onChange({ ...config, ip: e.target.value })}
+              placeholder="192.168.1.100"
+            />
+          </div>
+          <div className="field">
+            <label className="label">Port</label>
+            <input
+              className="control"
+              type="number"
+              min={1}
+              max={65535}
+              value={cfg.port ?? 19446}
+              onChange={(e) => onChange({ ...config, port: parseInt(e.target.value, 10) || 19446 })}
+            />
+          </div>
+          <div className="field">
+            <label className="label">Color order</label>
+            <select
+              className="control"
+              value={cfg.order ?? 'grb'}
+              onChange={(e) => onChange({ ...config, order: e.target.value as WledConfig['order'] })}
+            >
+              <option value="grb">GRB (WLED default)</option>
+              <option value="rgb">RGB</option>
+              <option value="bgr">BGR</option>
+              <option value="gbr">GBR</option>
+            </select>
+          </div>
         </div>
-        <div className="field">
-          <label className="label">Port</label>
-          <input
-            className="control"
-            type="number"
-            min={1}
-            max={65535}
-            value={(config as WledConfig).port ?? 19446}
-            onChange={(e) => onChange({ ...config, port: parseInt(e.target.value, 10) || 19446 })}
-          />
-        </div>
-        <div className="field">
-          <label className="label">Color order</label>
-          <select
-            className="control"
-            value={(config as WledConfig).order ?? 'grb'}
-            onChange={(e) => onChange({ ...config, order: e.target.value })}
-          >
-            <option value="grb">GRB (WLED default)</option>
-            <option value="rgb">RGB</option>
-            <option value="bgr">BGR</option>
-            <option value="gbr">GBR</option>
-          </select>
-        </div>
-      </div>
-    ),
+      );
+    },
   },
 ];
 
@@ -270,12 +302,19 @@ export const generateOutputForFormat = (
   colors: RgbColor[],
   id: OutputFormat,
   configs?: Partial<Record<OutputFormat, FormatConfig>>,
-  ctx?: { displayType: DisplayType; ringLeds: number; matrixWidth: number; matrixHeight: number; rotation: number },
+  ctx?: {
+    displayType: DisplayType;
+    ringLeds: number;
+    matrixWidth: number;
+    matrixHeight: number;
+    stripLeds: number;
+    rotation: number;
+  },
 ) => {
   const def = getFormatDefinition(id);
   if (!def) {
     return 'Unsupported format';
   }
-  const config = (configs?.[id] ?? def.defaultConfig) as typeof def.defaultConfig;
+  const config = (configs?.[id] ?? def.defaultConfig) as FormatConfig;
   return def.generate(colors, config, ctx);
 };

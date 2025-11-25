@@ -25,6 +25,7 @@ const App: React.FC = () => {
     state: {
       displayType,
       ringLeds,
+      stripLeds,
       matrixWidth,
       matrixHeight,
       ledColors,
@@ -42,6 +43,7 @@ const App: React.FC = () => {
     actions: {
       setDisplayType,
       setRingLeds,
+      setStripLeds,
       setMatrixWidth,
       setMatrixHeight,
       setCurrentColor,
@@ -83,6 +85,7 @@ const App: React.FC = () => {
               <Display
                 displayType={displayType}
                 ringLeds={ringLeds}
+                stripLeds={stripLeds}
                 matrixWidth={matrixWidth}
                 matrixHeight={matrixHeight}
                 ledColors={ledColors}
@@ -98,10 +101,12 @@ const App: React.FC = () => {
           <ConfigPanel
             displayType={displayType}
             ringLeds={ringLeds}
+            stripLeds={stripLeds}
             matrixWidth={matrixWidth}
             matrixHeight={matrixHeight}
             onDisplayTypeChange={setDisplayType}
             onRingLedsChange={setRingLeds}
+            onStripLedsChange={setStripLeds}
             onMatrixWidthChange={setMatrixWidth}
             onMatrixHeightChange={setMatrixHeight}
             currentColor={currentColor}

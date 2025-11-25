@@ -3,6 +3,8 @@ import type { DisplayType, HistoryEntry, RgbColor } from '../types';
 export const DEFAULT_RING_LED_COUNT = 24;
 export const DEFAULT_MATRIX_WIDTH = 8;
 export const DEFAULT_MATRIX_HEIGHT = 8;
+export const DEFAULT_STRIP_LED_COUNT = 60;
+export const MAX_STRIP_ROW_LENGTH = 16;
 
 export const createBlankColors = (count: number): RgbColor[] => Array.from({ length: count }, () => [0, 0, 0]);
 
@@ -59,10 +61,11 @@ export const sanitizeHistoryEntry = (entry: unknown): HistoryEntry | null => {
     return null;
   }
 
-  const base = withBaseMetadata(entry);
+  const typedEntry = entry as Record<string, unknown>;
+  const base = withBaseMetadata(typedEntry);
 
-  if (entry.displayType === 'ring') {
-    const ringLeds = parsePositiveInt(entry.ringLeds, DEFAULT_RING_LED_COUNT);
+  if (typedEntry.displayType === 'ring') {
+    const ringLeds = parsePositiveInt(typedEntry.ringLeds, DEFAULT_RING_LED_COUNT);
     return {
       displayType: 'ring',
       ringLeds,
@@ -74,9 +77,9 @@ export const sanitizeHistoryEntry = (entry: unknown): HistoryEntry | null => {
     };
   }
 
-  if (entry.displayType === 'matrix') {
-    const matrixWidth = parsePositiveInt(entry.matrixWidth, DEFAULT_MATRIX_WIDTH);
-    const matrixHeight = parsePositiveInt(entry.matrixHeight, DEFAULT_MATRIX_HEIGHT);
+  if (typedEntry.displayType === 'matrix') {
+    const matrixWidth = parsePositiveInt(typedEntry.matrixWidth, DEFAULT_MATRIX_WIDTH);
+    const matrixHeight = parsePositiveInt(typedEntry.matrixHeight, DEFAULT_MATRIX_HEIGHT);
     const ledCount = matrixWidth * matrixHeight || DEFAULT_MATRIX_WIDTH * DEFAULT_MATRIX_HEIGHT;
 
     return {
@@ -84,6 +87,19 @@ export const sanitizeHistoryEntry = (entry: unknown): HistoryEntry | null => {
       matrixWidth,
       matrixHeight,
       ledColors: sanitizeLedColors(base.ledColors, ledCount),
+      timestamp: base.timestamp,
+      summary: base.summary,
+      rotation: base.rotation,
+      showLabels: base.showLabels,
+    };
+  }
+
+  if (typedEntry.displayType === 'strip') {
+    const stripLeds = parsePositiveInt(typedEntry.stripLeds, DEFAULT_STRIP_LED_COUNT);
+    return {
+      displayType: 'strip',
+      stripLeds,
+      ledColors: sanitizeLedColors(base.ledColors, stripLeds),
       timestamp: base.timestamp,
       summary: base.summary,
       rotation: base.rotation,
@@ -112,10 +128,21 @@ export const parseStoredHistory = (raw: string | null): HistoryEntry[] => {
   }
 };
 
-export const getLedCount = (displayType: DisplayType, ringLeds: number, matrixWidth: number, matrixHeight: number) =>
-  displayType === 'ring' ? ringLeds : matrixWidth * matrixHeight;
+export const getLedCount = (
+  displayType: DisplayType,
+  ringLeds: number,
+  matrixWidth: number,
+  matrixHeight: number,
+  stripLeds?: number,
+) => {
+  if (displayType === 'ring') return ringLeds;
+  if (displayType === 'strip') return stripLeds ?? DEFAULT_STRIP_LED_COUNT;
+  return matrixWidth * matrixHeight;
+};
 
 export const describeConfiguration = (entry: HistoryEntry) =>
   entry.displayType === 'ring'
     ? `Ring • ${entry.ringLeds} LEDs`
-    : `Matrix • ${entry.matrixWidth} x ${entry.matrixHeight}`;
+    : entry.displayType === 'matrix'
+      ? `Matrix • ${entry.matrixWidth} x ${entry.matrixHeight}`
+      : `Strip • ${entry.stripLeds} LEDs`;
