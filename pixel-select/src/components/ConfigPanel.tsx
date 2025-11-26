@@ -252,29 +252,27 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
         <h3>Export formats</h3>
       </div>
 
-      <div className="grid two align-end">
-        <div className="field">
-          <label className="label">Format</label>
-          <select
-            className="control"
-            value={selectedFormat}
-            onChange={(e) => onSelectFormat(e.target.value as OutputFormat)}
-          >
-            {formatDefinitions.map((fmt) => (
-              <option key={fmt.id} value={fmt.id} disabled={!formatAllowed(fmt)}>
-                {fmt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button
-          className="btn ghost"
-          onClick={() => onOutputRequest(selectedFormat)}
-          disabled={isBitmapFormat && !previewUrl}
+      <div className="field">
+        <label className="label">Format</label>
+        <select
+          className="control"
+          value={selectedFormat}
+          onChange={(e) => onSelectFormat(e.target.value as OutputFormat)}
         >
-          {isBitmapFormat ? 'Download PNG' : 'Generate'}
-        </button>
+          {formatDefinitions.map((fmt) => (
+            <option key={fmt.id} value={fmt.id} disabled={!formatAllowed(fmt)}>
+              {fmt.label}
+            </option>
+          ))}
+        </select>
       </div>
+      <button
+        className="btn ghost"
+        onClick={() => onOutputRequest(selectedFormat)}
+        disabled={isBitmapFormat && !previewUrl}
+      >
+        {isBitmapFormat ? 'Download PNG' : 'Generate'}
+      </button>
 
       {activeFormat?.description && <p className="muted">{activeFormat.description}</p>}
       {activeFormat?.renderConfig && (
