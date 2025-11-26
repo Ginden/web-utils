@@ -81,10 +81,10 @@ export const wledFormat: OutputFormatDefinition = {
       return `printf '%s' '${base64}' | base64 -d | nc -u -w1 -q0 ${ip} ${port}`;
     }
     if (sender === 'debug') {
-      return `node -p 'Buffer.from(process.argv[1], \"base64\").toString(\"hex\")' '${base64}'`;
+      return `node -p 'Buffer.from(process.argv[1], "base64").toString("hex")' '${base64}'`;
     }
 
-    return `node -p 'dgram.createSocket(\"udp4\").send(Buffer.from(process.argv[1],\"base64\"), Number(process.argv[2]), process.argv[3], ()=>process.exit())' '${base64}' '${port}' '${ip}'`;
+    return `node -p 'dgram.createSocket("udp4").send(Buffer.from(process.argv[1],"base64"), Number(process.argv[2]), process.argv[3], ()=>process.exit())' '${base64}' '${port}' '${ip}'`;
   },
   renderConfig: ({ config, onChange }: { config: FormatConfig; onChange: (cfg: FormatConfig) => void }) => {
     const cfg = config as WledConfig;
