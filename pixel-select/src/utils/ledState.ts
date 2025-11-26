@@ -49,7 +49,6 @@ const withBaseMetadata = (entry: unknown) => {
   const typed = entry as Partial<HistoryEntry> | undefined;
   return {
     timestamp: typeof typed?.timestamp === 'string' ? typed.timestamp : new Date().toISOString(),
-    summary: typeof typed?.summary === 'string' ? typed.summary : undefined,
     rotation: parseNumber((typed as { rotation?: unknown } | undefined)?.rotation, 0),
     showLabels: typed?.showLabels === undefined ? true : Boolean(typed.showLabels),
     ledColors: Array.isArray(typed?.ledColors) ? typed.ledColors : [],
@@ -71,7 +70,6 @@ export const sanitizeHistoryEntry = (entry: unknown): HistoryEntry | null => {
       ringLeds,
       ledColors: sanitizeLedColors(base.ledColors, ringLeds),
       timestamp: base.timestamp,
-      summary: base.summary,
       rotation: base.rotation,
       showLabels: base.showLabels,
     };
@@ -88,7 +86,6 @@ export const sanitizeHistoryEntry = (entry: unknown): HistoryEntry | null => {
       matrixHeight,
       ledColors: sanitizeLedColors(base.ledColors, ledCount),
       timestamp: base.timestamp,
-      summary: base.summary,
       rotation: base.rotation,
       showLabels: base.showLabels,
     };
@@ -101,7 +98,6 @@ export const sanitizeHistoryEntry = (entry: unknown): HistoryEntry | null => {
       stripLeds,
       ledColors: sanitizeLedColors(base.ledColors, stripLeds),
       timestamp: base.timestamp,
-      summary: base.summary,
       rotation: base.rotation,
       showLabels: base.showLabels,
     };

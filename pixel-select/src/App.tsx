@@ -35,7 +35,7 @@ const App: React.FC = () => {
       history,
       rotation,
       showLabels,
-      isSummarizing,
+      isSavingHistory,
       ringLayoutConfig,
       selectedFormat,
       formatConfigs,
@@ -125,7 +125,7 @@ const App: React.FC = () => {
             onRotationChange={setRotation}
             showLabels={showLabels}
             onShowLabelsChange={setShowLabels}
-            isSummarizing={isSummarizing}
+            isSavingHistory={isSavingHistory}
             selectedFormat={selectedFormat}
             onSelectFormat={setSelectedFormat}
             formatConfigs={formatConfigs}

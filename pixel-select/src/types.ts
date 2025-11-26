@@ -4,7 +4,6 @@ export type RgbColor = [number, number, number];
 
 export type HistoryEntry = {
   timestamp: string;
-  summary?: string;
   ledColors: RgbColor[];
   rotation: number;
   showLabels: boolean;
@@ -31,4 +30,4 @@ export type RingLayoutConfig = {
   pcbRatio: number;
 };
 
-export type OutputFormat = 'rgb' | 'bgr' | 'gbr' | 'arduino' | 'esphome_static' | 'png' | 'png_bitmap_8x8' | 'wled_udp';
+export type OutputFormat = 'buffer' | 'arduino' | 'esphome_static' | 'png' | 'png_bitmap_8x8' | 'wled_udp';

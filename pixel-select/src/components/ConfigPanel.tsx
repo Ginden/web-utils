@@ -24,7 +24,7 @@ interface ConfigPanelProps {
   onRotationChange: React.Dispatch<React.SetStateAction<number>>;
   showLabels: boolean;
   onShowLabelsChange: React.Dispatch<React.SetStateAction<boolean>>;
-  isSummarizing: boolean; // New prop
+  isSavingHistory: boolean;
   selectedFormat: OutputFormat;
   onSelectFormat: (next: OutputFormat) => void;
   formatConfigs: Record<OutputFormat, Record<string, unknown>>;
@@ -54,7 +54,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   onRotationChange,
   showLabels,
   onShowLabelsChange,
-  isSummarizing,
+  isSavingHistory,
   selectedFormat,
   onSelectFormat,
   formatConfigs,
@@ -243,8 +243,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
         </div>
       </div>
 
-      <button className="btn primary" onClick={onSaveToHistory} disabled={isSummarizing}>
-        {isSummarizing ? 'Saving…' : 'Save to history'}
+      <button className="btn primary" onClick={onSaveToHistory} disabled={isSavingHistory}>
+        {isSavingHistory ? 'Saving…' : 'Save to history'}
       </button>
 
       <div className="section-heading compact space-top">

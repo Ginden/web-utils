@@ -383,11 +383,6 @@
   font-weight: 700;
 }
 
-.history-summary {
-  color: var(--muted);
-  line-height: 1.4;
-}
-
 .history-meta {
   font-size: 0.85rem;
   color: var(--muted);

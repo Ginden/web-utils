@@ -34,7 +34,8 @@ export type OutputFormatDefinition = {
   renderConfig?: FormatConfigRenderer<FormatConfig>;
 };
 
-type BufferConfig = { order: 'rgb' | 'bgr' | 'gbr' };
+type BufferOrder = 'rgb' | 'rbg' | 'grb' | 'gbr' | 'brg' | 'bgr';
+type BufferConfig = { order: BufferOrder };
 type PngConfig = { resolution: number; background: string };
 type EsphomeConfig = { effectName: string };
 type WledMode = 'drgb' | 'dnrgb' | 'hyperion';
@@ -47,28 +48,51 @@ type WledConfig = {
   timeoutSeconds: number;
 };
 
-const bufferFormat = (
-  id: OutputFormat,
-  label: string,
-  order: BufferConfig['order'],
-  description?: string,
-): OutputFormatDefinition => ({
-  id,
-  label,
-  description,
-  defaultConfig: { order },
-  generate: (colors: RgbColor[], config: FormatConfig) => {
-    const cfg = config as BufferConfig;
-    const indices = cfg.order === 'rgb' ? [0, 1, 2] : cfg.order === 'bgr' ? [2, 1, 0] : [1, 2, 0]; // gbr
-    const output = colors.map((col) => `${col[indices[0]]}, ${col[indices[1]]}, ${col[indices[2]]}`).join(', ');
-    return `[${output}]`;
-  },
-});
-
 export const formatDefinitions: OutputFormatDefinition[] = [
-  { ...bufferFormat('rgb', 'RGB Buffer', 'rgb', 'Comma-separated RGB values in array form'), eager: true },
-  { ...bufferFormat('bgr', 'BGR Buffer', 'bgr', 'Comma-separated BGR values in array form'), eager: true },
-  { ...bufferFormat('gbr', 'GBR Buffer', 'gbr', 'Comma-separated GBR values in array form'), eager: true },
+  {
+    id: 'buffer',
+    label: 'Buffer (RGB permutations)',
+    description: 'Comma-separated array with selectable R/G/B ordering',
+    defaultConfig: { order: 'rgb' as BufferOrder },
+    eager: true,
+    generate: (colors: RgbColor[], config: FormatConfig) => {
+      const cfg = config as BufferConfig;
+      const order = (['rgb', 'rbg', 'grb', 'gbr', 'brg', 'bgr'] as BufferOrder[]).includes(cfg?.order as BufferOrder)
+        ? (cfg.order as BufferOrder)
+        : 'rgb';
+      const indicesMap: Record<BufferOrder, [number, number, number]> = {
+        rgb: [0, 1, 2],
+        rbg: [0, 2, 1],
+        grb: [1, 0, 2],
+        gbr: [1, 2, 0],
+        brg: [2, 0, 1],
+        bgr: [2, 1, 0],
+      };
+      const indices = indicesMap[order];
+      const output = colors.map((col) => `${col[indices[0]]}, ${col[indices[1]]}, ${col[indices[2]]}`).join(', ');
+      return `[${output}]`;
+    },
+    renderConfig: ({ config, onChange }: { config: FormatConfig; onChange: (cfg: FormatConfig) => void }) => {
+      const cfg = config as BufferConfig;
+      return (
+        <div className="field">
+          <label className="label">Channel order</label>
+          <select
+            className="control"
+            value={cfg.order ?? 'rgb'}
+            onChange={(e) => onChange({ ...config, order: e.target.value as BufferOrder })}
+          >
+            <option value="rgb">RGB</option>
+            <option value="rbg">RBG</option>
+            <option value="grb">GRB</option>
+            <option value="gbr">GBR</option>
+            <option value="brg">BRG</option>
+            <option value="bgr">BGR</option>
+          </select>
+        </div>
+      );
+    },
+  },
   {
     id: 'arduino',
     label: 'Arduino (FastLED)',

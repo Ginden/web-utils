@@ -27,7 +27,6 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onLoadHistory, onD
               <li key={entry.timestamp} className="history-card">
                 <div className="history-main">
                   <div className="history-title">{describeConfiguration(entry)}</div>
-                  {entry.summary && <div className="history-summary">{entry.summary}</div>}
                   <div className="history-meta">{new Date(entry.timestamp).toLocaleString()}</div>
                   <div className="history-actions">
                     <button className="btn ghost" onClick={() => onLoadHistory(entry)}>

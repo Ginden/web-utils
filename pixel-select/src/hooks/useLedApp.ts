@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getSummary } from '../api/SummarizerAPI';
 import { hexToRgb, rgbToHex } from '../utils/colorUtils';
 import {
   DEFAULT_MATRIX_HEIGHT,
@@ -13,20 +12,8 @@ import {
   sanitizeLedColors,
 } from '../utils/ledState';
 import type { DisplayType, HistoryEntry, OutputFormat, RingLayoutConfig, RgbColor } from '../types';
-import {
-  buildDefaultFormatConfig,
-  formatDefinitions,
-  generateOutputForFormat,
-  getFormatDefinition,
-} from '../output/formats';
+import { buildDefaultFormatConfig, formatDefinitions, generateOutputForFormat, getFormatDefinition } from '../output/formats';
 import { generateMatrixBitmapDataUrl } from '../output/png';
-
-const generateArduinoOutput = (colors: RgbColor[]) => {
-  let output = `CRGB leds[] = {\n`;
-  output += colors.map(([r, g, b]) => `  CRGB(${r}, ${g}, ${b})`).join(',\n');
-  output += `\n};`;
-  return output;
-};
 
 export const useLedApp = () => {
   const [displayType, setDisplayType] = useState<DisplayType>('ring');
@@ -40,12 +27,12 @@ export const useLedApp = () => {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [rotation, setRotation] = useState<number>(0);
   const [showLabels, setShowLabels] = useState<boolean>(true);
-  const [isSummarizing, setIsSummarizing] = useState<boolean>(false);
+  const [isSavingHistory, setIsSavingHistory] = useState<boolean>(false);
   const [ringLayoutConfig] = useState<RingLayoutConfig>({
     spacingPx: 22,
     pcbRatio: 0.035,
   });
-  const [selectedFormat, setSelectedFormat] = useState<OutputFormat>('rgb');
+  const [selectedFormat, setSelectedFormat] = useState<OutputFormat>('buffer');
   const [formatConfigs, setFormatConfigs] = useState<Record<OutputFormat, Record<string, unknown>>>(() => {
     const base = buildDefaultFormatConfig();
     const stored = localStorage.getItem('wled_udp_endpoint');
@@ -75,7 +62,7 @@ export const useLedApp = () => {
     setDisplayType(next);
     setSelectedFormat((prev) => {
       const allowed = formatDefinitions.filter((fmt) => !fmt.displayTypes || fmt.displayTypes.includes(next));
-      return (allowed.some((f) => f.id === prev) ? prev : (allowed[0]?.id ?? 'rgb')) as OutputFormat;
+      return (allowed.some((f) => f.id === prev) ? prev : (allowed[0]?.id ?? 'buffer')) as OutputFormat;
     });
   }, []);
 
@@ -265,42 +252,48 @@ export const useLedApp = () => {
     [currentColor, displayType, matrixHeight, matrixWidth, ringLeds, stripLeds],
   );
 
-  const handleSaveToHistory = useCallback(async () => {
-    setIsSummarizing(true);
+  const handleSaveToHistory = useCallback(() => {
+    setIsSavingHistory(true);
+    try {
+      const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight, stripLeds);
+      const safeColors = sanitizeLedColors(ledColors, ledCount);
 
-    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight, stripLeds);
-    const safeColors = sanitizeLedColors(ledColors, ledCount);
-    const arduinoOutput = generateArduinoOutput(safeColors);
-    const summary = await getSummary(arduinoOutput);
-
-    const newHistoryEntry: HistoryEntry = {
-      ...(displayType === 'ring'
-        ? {
-            displayType,
-            ringLeds,
-          }
-        : displayType === 'matrix'
+      const newHistoryEntry: HistoryEntry =
+        displayType === 'ring'
           ? {
               displayType,
-              matrixWidth,
-              matrixHeight,
+              ringLeds,
+              ledColors: safeColors,
+              rotation,
+              showLabels,
+              timestamp: new Date().toISOString(),
             }
-          : {
-              displayType,
-              stripLeds,
-            }),
-      ledColors: safeColors,
-      rotation,
-      showLabels,
-      timestamp: new Date().toISOString(),
-      summary,
-    };
+          : displayType === 'matrix'
+            ? {
+                displayType,
+                matrixWidth,
+                matrixHeight,
+                ledColors: safeColors,
+                rotation,
+                showLabels,
+                timestamp: new Date().toISOString(),
+              }
+            : {
+                displayType,
+                stripLeds,
+                ledColors: safeColors,
+                rotation,
+                showLabels,
+                timestamp: new Date().toISOString(),
+              };
 
-    const updatedHistory = [newHistoryEntry, ...history];
+      const updatedHistory = [newHistoryEntry, ...history];
 
-    setHistory(updatedHistory);
-    localStorage.setItem('led_history', JSON.stringify(updatedHistory));
-    setIsSummarizing(false);
+      setHistory(updatedHistory);
+      localStorage.setItem('led_history', JSON.stringify(updatedHistory));
+    } finally {
+      setIsSavingHistory(false);
+    }
   }, [displayType, history, ledColors, matrixHeight, matrixWidth, ringLeds, rotation, showLabels, stripLeds]);
 
   const handleDeleteFromHistory = useCallback(
@@ -388,7 +381,7 @@ export const useLedApp = () => {
       history,
       rotation,
       showLabels,
-      isSummarizing,
+      isSavingHistory,
       ringLayoutConfig,
       selectedFormat,
       formatConfigs,
