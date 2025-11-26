@@ -219,8 +219,8 @@ export const formatDefinitions: OutputFormatDefinition[] = [
   },
   {
     id: 'wled_udp',
-    label: 'WLED UDP packet',
-    description: 'Shell command to send raw bytes over UDP',
+    label: 'WLED UDP sync (DRGB)',
+    description: 'Shell command to send DRGB UDP sync packet (0x02 header)',
     defaultConfig: {
       ip: '192.168.1.100',
       port: 19446,
@@ -237,10 +237,13 @@ export const formatDefinitions: OutputFormatDefinition[] = [
         : 'grb';
       const indices =
         order === 'rgb' ? [0, 1, 2] : order === 'bgr' ? [2, 1, 0] : order === 'gbr' ? [1, 2, 0] : [1, 0, 2]; // grb default for WLED
-      const byteValues = colors
-        .map((c) => indices.map((idx) => c[idx] ?? 0))
-        .flat()
-        .map((v: number) => Math.max(0, Math.min(255, v)));
+      const byteValues = [
+        2, // DRGB protocol header byte
+        ...colors
+          .map((c) => indices.map((idx) => c[idx] ?? 0))
+          .flat()
+          .map((v: number) => Math.max(0, Math.min(255, v))),
+      ];
 
       let base64: string;
       if (typeof btoa === 'function') {
