@@ -1,4 +1,7 @@
 import type { RgbColor } from '../../types';
+import Icon from '../../components/Icon';
+import Tooltip from '../../components/Tooltip';
+import { mdiInformationOutline } from '@mdi/js';
 import type { FormatConfig, OutputFormatDefinition } from './types';
 
 type WledMode = 'drgb' | 'dnrgb' | 'hyperion';
@@ -85,10 +88,23 @@ export const wledFormat: OutputFormatDefinition = {
   },
   renderConfig: ({ config, onChange }: { config: FormatConfig; onChange: (cfg: FormatConfig) => void }) => {
     const cfg = config as WledConfig;
+    const Info = ({ text }: { text: string }) => (
+      <Tooltip content={text}>
+        <span className="inline-help">
+          <Icon path={mdiInformationOutline} size={16} />
+        </span>
+      </Tooltip>
+    );
+
     return (
       <div className="grid two">
         <div className="field span-two">
-          <label className="label">Mode</label>
+          <label className="label">
+            Mode{' '}
+            <Info
+              text={`DRGB: header 0x02 + timeout + full frame (RGB).\nDNRGB: header 0x04 + timeout + start index (2B big-endian) + up to 489 RGB LEDs.\nHyperion: raw RGB bytes, no header. Default port 19446.`}
+            />
+          </label>
           <select
             className="control"
             value={cfg.mode ?? 'drgb'}
@@ -105,7 +121,12 @@ export const wledFormat: OutputFormatDefinition = {
         </div>
         {cfg.mode !== 'hyperion' && (
           <div className="field span-two">
-            <label className="label">Timeout seconds (Byte 1)</label>
+            <label className="label">
+              Timeout seconds (Byte 1){' '}
+              <Info
+                text={`WARLS byte 1: timeout seconds before leaving realtime.\nUse 255 to disable timeout (stay in realtime).`}
+              />
+            </label>
             <input
               className="control"
               type="number"
@@ -149,7 +170,12 @@ export const wledFormat: OutputFormatDefinition = {
           />
         </div>
         <div className="field span-two">
-          <label className="label">Sender</label>
+          <label className="label">
+            Sender{' '}
+            <Info
+              text={`Node: dgram UDP with base64 payload.\nNetcat: printf base64 | base64 -d | nc -u -w1 -q0.\nDebug: prints hex payload only (no network send).`}
+            />
+          </label>
           <select
             className="control"
             value={cfg.sender ?? 'node'}
@@ -162,7 +188,12 @@ export const wledFormat: OutputFormatDefinition = {
         </div>
         {cfg.mode === 'dnrgb' && (
           <div className="field span-two">
-            <label className="label">Start index (0-based)</label>
+            <label className="label">
+              Start index (0-based){' '}
+              <Info
+                text={`DNRGB prefix includes 2-byte big-endian start index after timeout.\nPacket fits up to 489 LEDs; indices clamp 0-65535.`}
+              />
+            </label>
             <input
               className="control"
               type="number"

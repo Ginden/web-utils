@@ -5,6 +5,8 @@ import HistoryPanel from './components/HistoryPanel';
 import ImageImportModal from './components/ImageImportModal';
 import './App.css';
 import { useLedApp } from './hooks/useLedApp';
+import Icon from './components/Icon';
+import { mdiWeatherNight, mdiWeatherSunny } from '@mdi/js';
 
 const App: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -74,7 +76,15 @@ const App: React.FC = () => {
           </div>
         </div>
         <button className="pill-action" onClick={toggleTheme} aria-label="Toggle color theme">
-          {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+          {theme === 'dark' ? (
+            <>
+              <Icon path={mdiWeatherSunny} size={18} /> Light
+            </>
+          ) : (
+            <>
+              <Icon path={mdiWeatherNight} size={18} /> Dark
+            </>
+          )}
         </button>
       </header>
       <div className="main-content">

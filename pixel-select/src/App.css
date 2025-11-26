@@ -52,6 +52,55 @@
   font-size: 0.9rem;
 }
 
+.icon {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.btn .icon {
+  margin-right: 6px;
+}
+
+.inline-help {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  color: var(--muted);
+}
+
+.inline-help .icon {
+  margin: 0;
+}
+
+.copy-container {
+  position: relative;
+}
+
+.copy-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.copy-button:hover {
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+
+.copy-button:active {
+  transform: translateY(1px);
+}
+
 .pill-action {
   border: 1px solid var(--border);
   background: var(--surface);
@@ -419,6 +468,39 @@
 
 .history-summary-toggle::-webkit-details-marker {
   display: none;
+}
+
+.tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tooltip-bubble {
+  pointer-events: none;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translate(-50%, -6px) scale(0.98);
+  background: var(--text);
+  color: var(--bg);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: pre-line;
+  max-width: 320px;
+  text-align: left;
+  opacity: 0;
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.18);
+  z-index: 10;
+}
+
+.tooltip-bubble.visible {
+  opacity: 1;
+  transform: translate(-50%, -10px) scale(1);
 }
 
 @media (max-width: 1024px) {

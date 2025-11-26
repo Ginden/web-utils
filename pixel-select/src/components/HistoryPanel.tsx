@@ -2,6 +2,8 @@ import React from 'react';
 import type { HistoryEntry } from '../types'; // Import HistoryEntry as a type
 import HistoryPreview from './HistoryPreview';
 import { describeConfiguration } from '../utils/ledState';
+import Icon from './Icon';
+import { mdiHistory, mdiPlay, mdiDeleteOutline } from '@mdi/js';
 
 interface HistoryPanelProps {
   history: HistoryEntry[];
@@ -16,7 +18,9 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onLoadHistory, onD
         <summary className="history-summary-toggle">
           <div className="section-heading compact">
             <div className="eyebrow">Saved</div>
-            <h3>History</h3>
+            <h3>
+              <Icon path={mdiHistory} size={18} /> History
+            </h3>
           </div>
         </summary>
         {history.length === 0 ? (
@@ -30,9 +34,11 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onLoadHistory, onD
                   <div className="history-meta">{new Date(entry.timestamp).toLocaleString()}</div>
                   <div className="history-actions">
                     <button className="btn ghost" onClick={() => onLoadHistory(entry)}>
+                      <Icon path={mdiPlay} size={16} />
                       Load
                     </button>
                     <button className="btn subtle" onClick={() => onDeleteHistory(entry.timestamp)}>
+                      <Icon path={mdiDeleteOutline} size={16} />
                       Delete
                     </button>
                   </div>

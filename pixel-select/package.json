@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mdi/js": "^7.4.47",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "yaml": "^2.8.1"

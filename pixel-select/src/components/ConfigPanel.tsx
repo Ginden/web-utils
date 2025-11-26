@@ -1,6 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { OutputFormat } from '../types';
 import { formatDefinitions } from '../output/formats';
+import Icon from './Icon';
+import Tooltip from './Tooltip';
+import {
+  mdiToolboxOutline,
+  mdiChevronDown,
+  mdiChevronRight,
+  mdiRotateRight,
+  mdiImagePlus,
+  mdiContentSaveOutline,
+  mdiPlayCircle,
+  mdiDownload,
+  mdiContentCopy,
+  mdiCheck,
+} from '@mdi/js';
 
 interface ConfigPanelProps {
   displayType: 'ring' | 'matrix' | 'strip';
@@ -70,11 +84,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   const activeConfig = (formatConfigs[activeFormat.id as OutputFormat] ??
     activeFormat.defaultConfig) as typeof activeFormat.defaultConfig;
   const isBitmapFormat = activeFormat.id === 'png_bitmap_8x8';
+  const shouldShowGenerate = !activeFormat.eager || isBitmapFormat;
   const previewUrl = isBitmapFormat ? outputPreviewUrl : undefined;
   const previewWrapperRef = useRef<HTMLDivElement | null>(null);
   const [previewWidth, setPreviewWidth] = useState<number>(matrixWidth);
   const [rawToolboxOpen, setRawToolboxOpen] = useState(false);
   const toolboxOpen = displayType === 'matrix' && rawToolboxOpen;
+  const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!isBitmapFormat) return;
@@ -172,14 +189,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
               aria-expanded={toolboxOpen}
             >
               <span className="toolbox-icon" aria-hidden="true">
-                🧰
+                <Icon path={mdiToolboxOutline} size={20} />
               </span>
               <div>
                 <div className="label">Toolbox</div>
                 <div className="toolbox-subtitle">Rotate pixels or import from image</div>
               </div>
               <span className="chevron" aria-hidden="true">
-                {toolboxOpen ? '▾' : '▸'}
+                {toolboxOpen ? <Icon path={mdiChevronDown} size={16} /> : <Icon path={mdiChevronRight} size={16} />}
               </span>
             </button>
             {toolboxOpen && (
@@ -194,6 +211,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
                         type="button"
                         onClick={() => onRotateMatrixPixels(angle as 90 | 180 | 270)}
                       >
+                        <Icon path={mdiRotateRight} size={16} />
                         {angle}°
                       </button>
                     ))}
@@ -203,6 +221,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
                 <div className="field">
                   <div className="label">Import from image</div>
                   <button className="btn ghost" type="button" onClick={onOpenImageImport}>
+                    <Icon path={mdiImagePlus} size={16} />
                     Upload image & crop
                   </button>
                   <p className="muted">Opens a modal with square crop and pixelated preview.</p>
@@ -244,6 +263,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
       </div>
 
       <button className="btn primary" onClick={onSaveToHistory} disabled={isSavingHistory}>
+        <Icon path={mdiContentSaveOutline} size={18} />
         {isSavingHistory ? 'Saving…' : 'Save to history'}
       </button>
 
@@ -266,13 +286,16 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
           ))}
         </select>
       </div>
-      <button
-        className="btn ghost"
-        onClick={() => onOutputRequest(selectedFormat)}
-        disabled={isBitmapFormat && !previewUrl}
-      >
-        {isBitmapFormat ? 'Download PNG' : 'Generate'}
-      </button>
+      {shouldShowGenerate && (
+        <button
+          className="btn ghost"
+          onClick={() => onOutputRequest(selectedFormat)}
+          disabled={isBitmapFormat && !previewUrl}
+        >
+          <Icon path={isBitmapFormat ? mdiDownload : mdiPlayCircle} size={18} />
+          {isBitmapFormat ? 'Download PNG' : 'Generate'}
+        </button>
+      )}
 
       {activeFormat?.description && <p className="muted">{activeFormat.description}</p>}
       {activeFormat?.renderConfig && (
@@ -290,12 +313,35 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
       )}
 
       {!isBitmapFormat && (
-        <textarea
-          className="code-block"
-          readOnly
-          value={outputValue}
-          placeholder="Generated output will appear here..."
-        />
+        <div className="copy-container">
+          <textarea
+            className="code-block"
+            readOnly
+            value={outputValue}
+            placeholder="Generated output will appear here..."
+          />
+          <Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'}>
+            <button
+              type="button"
+              className="copy-button"
+              aria-label="Copy output to clipboard"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(outputValue || '');
+                  setCopied(true);
+                  if (copyTimeoutRef.current) {
+                    window.clearTimeout(copyTimeoutRef.current);
+                  }
+                  copyTimeoutRef.current = window.setTimeout(() => setCopied(false), 1200);
+                } catch (error) {
+                  console.error('Failed to copy output', error);
+                }
+              }}
+            >
+              <Icon path={copied ? mdiCheck : mdiContentCopy} size={16} />
+            </button>
+          </Tooltip>
+        </div>
       )}
       {isBitmapFormat && (
         <div
