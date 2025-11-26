@@ -37,7 +37,7 @@ export type OutputFormatDefinition = {
 type BufferConfig = { order: 'rgb' | 'bgr' | 'gbr' };
 type PngConfig = { resolution: number; background: string };
 type EsphomeConfig = { effectName: string };
-type WledConfig = { ip: string; port: number; order: 'grb' | 'rgb' | 'bgr' | 'gbr' };
+type WledConfig = { ip: string; port: number; order: 'grb' | 'rgb' | 'bgr' | 'gbr'; sender: 'node' | 'netcat' };
 
 const bufferFormat = (
   id: OutputFormat,
@@ -101,7 +101,7 @@ export const formatDefinitions: OutputFormatDefinition[] = [
           {
             addressable_lambda: {
               name,
-              update_interval: 'never',
+              update_interval: '50ms',
               lambda: lambdaLines,
             },
           },
@@ -225,6 +225,7 @@ export const formatDefinitions: OutputFormatDefinition[] = [
       ip: '192.168.1.100',
       port: 19446,
       order: 'grb' as 'grb' | 'rgb' | 'bgr' | 'gbr',
+      sender: 'node' as 'node' | 'netcat',
     },
     eager: true,
     generate: (colors: RgbColor[], config: FormatConfig) => {
@@ -236,13 +237,28 @@ export const formatDefinitions: OutputFormatDefinition[] = [
         : 'grb';
       const indices =
         order === 'rgb' ? [0, 1, 2] : order === 'bgr' ? [2, 1, 0] : order === 'gbr' ? [1, 2, 0] : [1, 0, 2]; // grb default for WLED
-      const hexBytes = colors
+      const byteValues = colors
         .map((c) => indices.map((idx) => c[idx] ?? 0))
         .flat()
-        .map((v: number) => `\\x${(v & 0xff).toString(16).padStart(2, '0')}`)
-        .join('');
-      const cmd = `printf '%b' '${hexBytes}' | nc -u -w1 -q0 ${ip} ${port}`;
-      return cmd;
+        .map((v: number) => Math.max(0, Math.min(255, v)));
+
+      let base64: string;
+      if (typeof btoa === 'function') {
+        let binary = '';
+        for (let i = 0; i < byteValues.length; i += 1) {
+          binary += String.fromCharCode(byteValues[i]);
+        }
+        base64 = btoa(binary);
+      } else {
+        base64 = '';
+      }
+
+      const sender = cfg?.sender === 'netcat' ? 'netcat' : 'node';
+      if (sender === 'netcat') {
+        return `printf '%s' '${base64}' | base64 -d | nc -u -w1 -q0 ${ip} ${port}`;
+      }
+
+      return `node -p 'dgram.createSocket("udp4").send(Buffer.from(process.argv[1],"base64"), Number(process.argv[2]), process.argv[3], ()=>process.exit())' '${base64}' '${port}' '${ip}'`;
     },
     renderConfig: ({ config, onChange }: { config: FormatConfig; onChange: (cfg: FormatConfig) => void }) => {
       const cfg = config as WledConfig;
@@ -280,6 +296,17 @@ export const formatDefinitions: OutputFormatDefinition[] = [
               <option value="rgb">RGB</option>
               <option value="bgr">BGR</option>
               <option value="gbr">GBR</option>
+            </select>
+          </div>
+          <div className="field">
+            <label className="label">Sender</label>
+            <select
+              className="control"
+              value={cfg.sender ?? 'node'}
+              onChange={(e) => onChange({ ...config, sender: e.target.value as WledConfig['sender'] })}
+            >
+              <option value="node">Node (default, base64)</option>
+              <option value="netcat">Netcat (base64 → nc)</option>
             </select>
           </div>
         </div>

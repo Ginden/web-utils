@@ -241,6 +241,53 @@
   font-family: var(--mono);
 }
 
+.toolbox {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+}
+
+.toolbox-header {
+  background: none;
+  border: none;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.toolbox-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.toolbox-header:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, var(--border));
+  outline-offset: 2px;
+}
+
+.toolbox-subtitle {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.chevron {
+  font-size: 1rem;
+}
+
+.toolbox-body {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .btn {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

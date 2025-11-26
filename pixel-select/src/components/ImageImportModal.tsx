@@ -15,6 +15,61 @@ type BackgroundMode = 'none' | 'color' | 'black';
 
 const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
 
+const parseSvgSize = (svgText: string): { width: number; height: number } => {
+  const viewBoxMatch = svgText.match(/viewBox=["']?([^"']+)["']?/i);
+  if (viewBoxMatch) {
+    const parts = viewBoxMatch[1].trim().split(/\s+/);
+    if (parts.length === 4) {
+      const width = parseFloat(parts[2]);
+      const height = parseFloat(parts[3]);
+      if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+        return { width, height };
+      }
+    }
+  }
+  const widthMatch = svgText.match(/width=["']?([0-9.]+)(px)?["']?/i);
+  const heightMatch = svgText.match(/height=["']?([0-9.]+)(px)?["']?/i);
+  const width = widthMatch ? parseFloat(widthMatch[1]) : 0;
+  const height = heightMatch ? parseFloat(heightMatch[1]) : 0;
+  if (width > 0 && height > 0) {
+    return { width, height };
+  }
+  return { width: 512, height: 512 };
+};
+
+const rasterizeSvgText = async (svgText: string): Promise<Blob | null> => {
+  const { width, height } = parseSvgSize(svgText);
+  const maxSide = 960;
+  const scale = Math.min(maxSide / width, maxSide / height);
+  const canvasWidth = Math.max(1, Math.round(width * scale));
+  const canvasHeight = Math.max(1, Math.round(height * scale));
+
+  const blob = new Blob([svgText], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    img.src = url;
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+    return await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((b) => resolve(b), 'image/png');
+    });
+  } catch (e) {
+    console.error('Failed to rasterize SVG', e);
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+};
+
 const cubicWeight = (x: number) => {
   const a = -0.5; // Catmull-Rom spline
   const abs = Math.abs(x);
@@ -241,7 +296,12 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
   const imageDimsRef = useRef<{ w: number; h: number } | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const dragState = useRef<{ active: boolean; offsetX: number; offsetY: number }>({ active: false, offsetX: 0, offsetY: 0 });
+  const dragState = useRef<{ active: boolean; offsetX: number; offsetY: number }>({
+    active: false,
+    offsetX: 0,
+    offsetY: 0,
+  });
+  const metricsRaf = useRef<number | null>(null);
 
   const resetState = useCallback(() => {
     setImageDims(null);
@@ -256,16 +316,35 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
     imageDimsRef.current = null;
   }, []);
 
-  const loadFromFile = useCallback(
-    (file: File) => {
+  const loadFromBlob = useCallback(
+    async (blob: Blob) => {
+      let finalBlob = blob;
+      if (blob.type.includes('svg')) {
+        try {
+          const svgText = await blob.text();
+          const raster = await rasterizeSvgText(svgText);
+          if (raster) {
+            finalBlob = raster;
+          }
+        } catch (e) {
+          console.warn('Falling back to raw SVG load', e);
+        }
+      }
       if (imageUrl) {
         URL.revokeObjectURL(imageUrl);
       }
-      const url = URL.createObjectURL(file);
+      const url = URL.createObjectURL(finalBlob);
       setImageUrl(url);
       resetState();
     },
     [imageUrl, resetState],
+  );
+
+  const loadFromFile = useCallback(
+    (file: File) => {
+      void loadFromBlob(file);
+    },
+    [loadFromBlob],
   );
 
   useEffect(() => {
@@ -300,27 +379,43 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
     imageDimsRef.current = imageDims;
   }, [imageDims]);
 
+  const updateMetrics = useCallback(() => {
+    if (!imageRef.current || !imageDims || !containerRef.current) return;
+    const rect = imageRef.current.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    setDisplayMetrics({
+      scaleX: imageDims.w / rect.width,
+      scaleY: imageDims.h / rect.height,
+      imgLeft: rect.left,
+      imgTop: rect.top,
+      containerLeft: containerRect.left,
+      containerTop: containerRect.top,
+    });
+  }, [imageDims]);
+
   useEffect(() => {
-    const updateMetrics = () => {
-      if (!imageRef.current || !imageDims || !containerRef.current) return;
-      const rect = imageRef.current.getBoundingClientRect();
-      const containerRect = containerRef.current.getBoundingClientRect();
-      setDisplayMetrics({
-        scaleX: imageDims.w / rect.width,
-        scaleY: imageDims.h / rect.height,
-        imgLeft: rect.left,
-        imgTop: rect.top,
-        containerLeft: containerRect.left,
-        containerTop: containerRect.top,
+    updateMetrics();
+  }, [imageUrl, updateMetrics]);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (metricsRaf.current) cancelAnimationFrame(metricsRaf.current);
+      metricsRaf.current = requestAnimationFrame(() => {
+        metricsRaf.current = null;
+        updateMetrics();
       });
     };
-    updateMetrics();
-    window.addEventListener('resize', updateMetrics);
-    return () => window.removeEventListener('resize', updateMetrics);
-  }, [imageDims, imageUrl]);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onResize, true);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onResize, true);
+    };
+  }, [updateMetrics]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!displayMetrics || !crop) return;
+    updateMetrics();
     e.preventDefault();
     const { imgLeft, imgTop, scaleX, scaleY } = displayMetrics;
     const x = (e.clientX - imgLeft) * scaleX;
@@ -373,6 +468,7 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
       sourceCanvas.height = cropSize;
       const srcCtx = sourceCanvas.getContext('2d');
       if (!srcCtx) return;
+
       if (backgroundMode === 'color') {
         srcCtx.fillStyle = backgroundColor;
         srcCtx.fillRect(0, 0, cropSize, cropSize);
@@ -402,7 +498,7 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
       destCanvas.height = matrixHeight;
       const destCtx = destCanvas.getContext('2d');
       if (!destCtx) return;
-      const destImage = new ImageData(resampled, matrixWidth, matrixHeight);
+      const destImage = new ImageData(new Uint8ClampedArray(resampled), matrixWidth, matrixHeight);
       destCtx.putImageData(destImage, 0, 0);
 
       setPreviewUrl(destCanvas.toDataURL('image/png'));
@@ -427,7 +523,9 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
     const nextSize = clamp(snapped, step, maxSize);
     const maxX = imageDims.w - nextSize;
     const maxY = imageDims.h - nextSize;
-    setCrop((prev) => (prev ? { ...prev, size: nextSize, x: clamp(prev.x, 0, maxX), y: clamp(prev.y, 0, maxY) } : prev));
+    setCrop((prev) =>
+      prev ? { ...prev, size: nextSize, x: clamp(prev.x, 0, maxX), y: clamp(prev.y, 0, maxY) } : prev,
+    );
   };
 
   useEffect(() => {
@@ -475,33 +573,40 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
     if (!isOpen) return;
     const onPaste = (event: ClipboardEvent) => {
       const items = event.clipboardData?.items;
-      if (!items) return;
-      for (const item of items) {
-        if (item.type && item.type.startsWith('image/')) {
-          const file = item.getAsFile();
-          if (file) {
-            event.preventDefault();
-            loadFromFile(file);
-            return;
+      if (items) {
+        for (const item of items) {
+          if (item.type && item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+              event.preventDefault();
+              loadFromFile(file);
+              return;
+            }
           }
         }
+      }
+      const text = event.clipboardData?.getData('text/plain');
+      if (text && /<svg[^>]*>/i.test(text)) {
+        event.preventDefault();
+        const blob = new Blob([text], { type: 'image/svg+xml' });
+        void loadFromBlob(blob);
       }
     };
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
-  }, [isOpen, loadFromFile]);
+  }, [isOpen, loadFromBlob, loadFromFile]);
 
   useEffect(() => {
     return () => {
       if (moveRaf.current) cancelAnimationFrame(moveRaf.current);
       if (previewRaf.current) cancelAnimationFrame(previewRaf.current);
+      if (metricsRaf.current) cancelAnimationFrame(metricsRaf.current);
     };
   }, []);
 
   if (!isOpen) return null;
 
-  const checkerboard =
-    'repeating-conic-gradient(#ccc 0% 25%, #999 0% 50%) 50% / 16px 16px';
+  const checkerboard = 'repeating-conic-gradient(#ccc 0% 25%, #999 0% 50%) 50% / 16px 16px';
 
   return (
     <div
@@ -510,10 +615,11 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
         inset: 0,
         background: 'rgba(0, 0, 0, 0.7)',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
         zIndex: 1000,
         padding: '24px',
+        overflow: 'auto',
       }}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
@@ -530,6 +636,8 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
           display: 'flex',
           flexDirection: 'column',
           gap: '12px',
+          maxHeight: 'calc(100vh - 48px)',
+          overflowY: 'auto',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
@@ -537,7 +645,8 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
             <div className="eyebrow">Matrix tool</div>
             <h3 style={{ margin: 0 }}>Upload & crop image</h3>
             <p className="muted" style={{ margin: 0 }}>
-              Square crop, auto-resized to {matrixWidth}×{matrixHeight}. Drag crop or adjust size. Paste (Ctrl/Cmd+V) an image or upload a file.
+              Square crop, auto-resized to {matrixWidth}×{matrixHeight}. Drag crop or adjust size. Paste (Ctrl/Cmd+V) an
+              image or upload a file.
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -549,7 +658,7 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
             </button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <div
             style={{
               flex: '1 1 360px',
@@ -574,7 +683,7 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
                   ref={imageRef}
                   src={imageUrl}
                   alt="Upload preview"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                  style={{ width: '100%', height: 'auto', objectFit: 'contain', display: 'block' }}
                   draggable={false}
                   onDragStart={(ev) => ev.preventDefault()}
                   onLoad={handleImageLoad}
@@ -614,7 +723,8 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
                   onChange={handleSizeChange}
                 />
                 <div className="muted">
-                  {Math.round(crop.size)} px square • image {imageDims.w}×{imageDims.h} • step {Math.max(1, Math.max(matrixWidth, matrixHeight))} px
+                  {Math.round(crop.size)} px square • image {imageDims.w}×{imageDims.h} • step{' '}
+                  {Math.max(1, Math.max(matrixWidth, matrixHeight))} px
                 </div>
                 <button className="btn ghost" type="button" onClick={handleCenterCrop}>
                   Center crop
@@ -623,7 +733,11 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
             )}
             <div className="field">
               <label className="label">Background</label>
-              <select className="control" value={backgroundMode} onChange={(e) => setBackgroundMode(e.target.value as BackgroundMode)}>
+              <select
+                className="control"
+                value={backgroundMode}
+                onChange={(e) => setBackgroundMode(e.target.value as BackgroundMode)}
+              >
                 <option value="none">Ignore background (transparent)</option>
                 <option value="color">Color background</option>
                 <option value="black">True black background</option>
@@ -652,14 +766,20 @@ const ImageImportModal: React.FC<Props> = ({ isOpen, onClose, matrixWidth, matri
             )}
             <div className="field">
               <label className="label">Scaling algorithm</label>
-              <select className="control" value={scalingAlgorithm} onChange={(e) => setScalingAlgorithm(e.target.value as ScalingAlgorithm)}>
+              <select
+                className="control"
+                value={scalingAlgorithm}
+                onChange={(e) => setScalingAlgorithm(e.target.value as ScalingAlgorithm)}
+              >
                 <option value="box">Box filter (area average)</option>
                 <option value="bilinear">Bilinear</option>
                 <option value="bicubic">Bicubic</option>
                 <option value="lanczos">Lanczos (sharp)</option>
               </select>
             </div>
-            <div className="label">Matrix preview ({matrixWidth}×{matrixHeight})</div>
+            <div className="label">
+              Matrix preview ({matrixWidth}×{matrixHeight})
+            </div>
             <div
               style={{
                 border: '1px solid var(--border)',

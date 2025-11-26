@@ -73,6 +73,8 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   const previewUrl = isBitmapFormat ? outputPreviewUrl : undefined;
   const previewWrapperRef = useRef<HTMLDivElement | null>(null);
   const [previewWidth, setPreviewWidth] = useState<number>(matrixWidth);
+  const [rawToolboxOpen, setRawToolboxOpen] = useState(false);
+  const toolboxOpen = displayType === 'matrix' && rawToolboxOpen;
 
   useEffect(() => {
     if (!isBitmapFormat) return;
@@ -138,47 +140,77 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
       )}
 
       {displayType === 'matrix' && (
-        <div className="field grid two">
-          <div>
-            <label className="label">Matrix Width</label>
-            <input
-              className="control"
-              type="number"
-              min="1"
-              value={matrixWidth}
-              onChange={(e) => onMatrixWidthChange(parseInt(e.target.value, 10))}
-            />
-          </div>
-          <div>
-            <label className="label">Matrix Height</label>
-            <input
-              className="control"
-              type="number"
-              min="1"
-              value={matrixHeight}
-              onChange={(e) => onMatrixHeightChange(parseInt(e.target.value, 10))}
-            />
-          </div>
-          <p className="muted span-two">Total LEDs: {matrixWidth * matrixHeight}</p>
-          <div className="span-two">
-            <div className="label">Rotate pixels</div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {[90, 180, 270].map((angle) => (
-                <button key={angle} className="btn ghost" type="button" onClick={() => onRotateMatrixPixels(angle as 90 | 180 | 270)}>
-                  {angle}°
-                </button>
-              ))}
+        <>
+          <div className="field grid two">
+            <div>
+              <label className="label">Matrix Width</label>
+              <input
+                className="control"
+                type="number"
+                min="1"
+                value={matrixWidth}
+                onChange={(e) => onMatrixWidthChange(parseInt(e.target.value, 10))}
+              />
             </div>
-            <p className="muted">Applies to pixel data (swaps width/height on 90°/270°).</p>
+            <div>
+              <label className="label">Matrix Height</label>
+              <input
+                className="control"
+                type="number"
+                min="1"
+                value={matrixHeight}
+                onChange={(e) => onMatrixHeightChange(parseInt(e.target.value, 10))}
+              />
+            </div>
           </div>
-          <div className="span-two">
-            <div className="label">Import from image</div>
-            <button className="btn ghost" type="button" onClick={onOpenImageImport}>
-              Upload image & crop
+          <p className="muted">Total LEDs: {matrixWidth * matrixHeight}</p>
+          <div className="toolbox">
+            <button
+              type="button"
+              className="toolbox-header"
+              onClick={() => setRawToolboxOpen((prev) => !prev)}
+              aria-expanded={toolboxOpen}
+            >
+              <span className="toolbox-icon" aria-hidden="true">
+                🧰
+              </span>
+              <div>
+                <div className="label">Toolbox</div>
+                <div className="toolbox-subtitle">Rotate pixels or import from image</div>
+              </div>
+              <span className="chevron" aria-hidden="true">
+                {toolboxOpen ? '▾' : '▸'}
+              </span>
             </button>
-            <p className="muted">Opens a modal with square crop and pixelated preview.</p>
+            {toolboxOpen && (
+              <div className="toolbox-body">
+                <div className="field">
+                  <div className="label">Rotate pixels</div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {[90, 180, 270].map((angle) => (
+                      <button
+                        key={angle}
+                        className="btn ghost"
+                        type="button"
+                        onClick={() => onRotateMatrixPixels(angle as 90 | 180 | 270)}
+                      >
+                        {angle}°
+                      </button>
+                    ))}
+                  </div>
+                  <p className="muted">Applies to pixel data (swaps width/height on 90°/270°).</p>
+                </div>
+                <div className="field">
+                  <div className="label">Import from image</div>
+                  <button className="btn ghost" type="button" onClick={onOpenImageImport}>
+                    Upload image & crop
+                  </button>
+                  <p className="muted">Opens a modal with square crop and pixelated preview.</p>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        </>
       )}
 
       <div className="grid two">
