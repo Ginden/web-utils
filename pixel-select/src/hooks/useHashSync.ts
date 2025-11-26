@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { DisplayType, RgbColor } from '../types';
 import { parseNumber, parsePositiveInt, sanitizeLedColors } from '../utils/ledState';
-import { hexToRgb, rgbToHex } from '../utils/colorUtils';
+import { hexToRgb } from '../utils/colorUtils';
 import {
   DEFAULT_MATRIX_HEIGHT,
   DEFAULT_MATRIX_WIDTH,
@@ -36,6 +36,39 @@ export const useHashSync = (state: State, setters: Setters) => {
   const [hashInitialized, setHashInitialized] = useState(false);
   const { displayType, ringLeds, stripLeds, matrixWidth, matrixHeight, rotation, showLabels, ledColors } = state;
 
+  const encodeColorsBase64 = (colors: RgbColor[]) => {
+    const bytes = new Uint8Array(colors.length * 3);
+    colors.forEach(([r, g, b], idx) => {
+      const base = idx * 3;
+      bytes[base] = Math.max(0, Math.min(255, r));
+      bytes[base + 1] = Math.max(0, Math.min(255, g));
+      bytes[base + 2] = Math.max(0, Math.min(255, b));
+    });
+    let binary = '';
+    bytes.forEach((val) => {
+      binary += String.fromCharCode(val);
+    });
+    return btoa(binary);
+  };
+
+  const decodeColorsFromParam = (value: string | null): RgbColor[] => {
+    if (!value) return [];
+    // Migration path: old format was comma-separated hex (#RRGGBB)
+    if (value.includes('#') || value.includes(',')) {
+      return value.split(',').map((hex) => hexToRgb(hex));
+    }
+    try {
+      const binary = atob(value);
+      const result: RgbColor[] = [];
+      for (let i = 0; i + 2 < binary.length; i += 3) {
+        result.push([binary.charCodeAt(i), binary.charCodeAt(i + 1), binary.charCodeAt(i + 2)]);
+      }
+      return result;
+    } catch {
+      return [];
+    }
+  };
+
   // Load from URL hash on mount
   useEffect(() => {
     const hash = window.location.hash.slice(1);
@@ -55,9 +88,7 @@ export const useHashSync = (state: State, setters: Setters) => {
 
           setters.setRingLeds(ringLedCount);
 
-          const colorsParam = params.get('colors');
-          const parsedColors = colorsParam ? colorsParam.split(',').map(hexToRgb) : undefined;
-
+          const parsedColors = decodeColorsFromParam(params.get('colors'));
           initialLedColors = sanitizeLedColors(parsedColors, ringLedCount);
         } else if (type === 'matrix') {
           const parsedWidth = parsePositiveInt(params.get('width'), DEFAULT_MATRIX_WIDTH);
@@ -66,16 +97,13 @@ export const useHashSync = (state: State, setters: Setters) => {
           setters.setMatrixWidth(parsedWidth);
           setters.setMatrixHeight(parsedHeight);
 
-          const colorsParam = params.get('colors');
-          const parsedColors = colorsParam ? colorsParam.split(',').map(hexToRgb) : undefined;
-
+          const parsedColors = decodeColorsFromParam(params.get('colors'));
           initialLedColors = sanitizeLedColors(parsedColors, parsedWidth * parsedHeight);
         } else {
           const parsedStrip = parsePositiveInt(params.get('leds'), DEFAULT_STRIP_LED_COUNT);
           setters.setStripLeds(parsedStrip);
 
-          const colorsParam = params.get('colors');
-          const parsedColors = colorsParam ? colorsParam.split(',').map(hexToRgb) : undefined;
+          const parsedColors = decodeColorsFromParam(params.get('colors'));
           initialLedColors = sanitizeLedColors(parsedColors, parsedStrip);
         }
 
@@ -107,7 +135,7 @@ export const useHashSync = (state: State, setters: Setters) => {
 
     params.set('rotation', rotation.toString());
     params.set('labels', String(showLabels));
-    params.set('colors', colorsForHash.map(rgbToHex).join(','));
+    params.set('colors', encodeColorsBase64(colorsForHash));
 
     const hash = params.toString();
     if (window.location.hash !== `#${hash}`) {

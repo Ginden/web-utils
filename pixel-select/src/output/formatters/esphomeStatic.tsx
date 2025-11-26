@@ -14,10 +14,11 @@ export const esphomeStaticFormat: OutputFormatDefinition = {
   eager: true,
   generate: (colors: RgbColor[], config: FormatConfig) => {
     const cfg = config as EsphomeConfig;
-    const name = typeof cfg?.effectName === 'string' && cfg.effectName.trim() ? cfg.effectName.trim() : 'StaticGenerated';
+    const name =
+      typeof cfg?.effectName === 'string' && cfg.effectName.trim() ? cfg.effectName.trim() : 'StaticGenerated';
     const lambdaLines = [
-      'const uint8_t pixels[][3] = {',
-      ...colors.map(([r, g, b]) => `  {${r}, ${g}, ${b}},`),
+      'static constexpr uint8_t pixels[][3] = {',
+      ...colors.map(([r, g, b], i) => `/* LED=${i} */  {${r}, ${g}, ${b}},`),
       '};',
       '',
       'for (int i = 0; i < it.size(); i++) {',

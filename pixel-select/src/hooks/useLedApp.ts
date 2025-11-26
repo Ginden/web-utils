@@ -150,7 +150,16 @@ export const useLedApp = () => {
       setShowLabels,
       setLedColors,
     }),
-    [handleDisplayTypeChange, setLedColors, setMatrixHeight, setMatrixWidth, setRingLeds, setRotation, setShowLabels, setStripLeds],
+    [
+      handleDisplayTypeChange,
+      setLedColors,
+      setMatrixHeight,
+      setMatrixWidth,
+      setRingLeds,
+      setRotation,
+      setShowLabels,
+      setStripLeds,
+    ],
   );
 
   useHashSync(
@@ -217,16 +226,7 @@ export const useLedApp = () => {
       showLabels,
       timestamp: new Date().toISOString(),
     };
-  }, [
-    displayType,
-    ledColors,
-    matrixHeight,
-    matrixWidth,
-    ringLeds,
-    rotation,
-    showLabels,
-    stripLeds,
-  ]);
+  }, [displayType, ledColors, matrixHeight, matrixWidth, ringLeds, rotation, showLabels, stripLeds]);
 
   const applyHistoryEntry = useCallback(
     (entry: HistoryEntry) => {

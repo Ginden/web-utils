@@ -2,10 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { parseStoredHistory } from '../utils/ledState';
 import type { HistoryEntry } from '../types';
 
-export const useHistoryManager = (
-  buildEntry: () => HistoryEntry,
-  applyEntry: (entry: HistoryEntry) => void,
-) => {
+export const useHistoryManager = (buildEntry: () => HistoryEntry, applyEntry: (entry: HistoryEntry) => void) => {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isSavingHistory, setIsSavingHistory] = useState<boolean>(false);
 
