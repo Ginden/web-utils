@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { hexToRgb, rgbToHex } from '../utils/colorUtils';
+import { hexToRgb } from '../utils/colorUtils';
 import {
   DEFAULT_MATRIX_HEIGHT,
   DEFAULT_MATRIX_WIDTH,
   DEFAULT_RING_LED_COUNT,
   DEFAULT_STRIP_LED_COUNT,
   getLedCount,
-  parseNumber,
-  parsePositiveInt,
-  parseStoredHistory,
   sanitizeLedColors,
 } from '../utils/ledState';
 import type { DisplayType, HistoryEntry, OutputFormat, RingLayoutConfig, RgbColor } from '../types';
-import { buildDefaultFormatConfig, formatDefinitions, generateOutputForFormat, getFormatDefinition } from '../output/formats';
+import {
+  buildDefaultFormatConfig,
+  formatDefinitions,
+  generateOutputForFormat,
+  getFormatDefinition,
+} from '../output/formats';
 import { generateMatrixBitmapDataUrl } from '../output/png';
+import { useHistoryManager } from './useHistoryManager';
+import { useHashSync } from './useHashSync';
 
 export const useLedApp = () => {
   const [displayType, setDisplayType] = useState<DisplayType>('ring');
@@ -24,10 +28,8 @@ export const useLedApp = () => {
   const [ledColors, setLedColors] = useState<RgbColor[]>(() => sanitizeLedColors([], DEFAULT_RING_LED_COUNT));
   const [currentColor, setCurrentColor] = useState<string>('#FF0000');
   const [outputValue, setOutputValue] = useState<string>('');
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [rotation, setRotation] = useState<number>(0);
   const [showLabels, setShowLabels] = useState<boolean>(true);
-  const [isSavingHistory, setIsSavingHistory] = useState<boolean>(false);
   const [ringLayoutConfig] = useState<RingLayoutConfig>({
     spacingPx: 22,
     pcbRatio: 0.035,
@@ -55,7 +57,6 @@ export const useLedApp = () => {
       return base;
     }
   });
-  const [hashInitialized, setHashInitialized] = useState(false);
   const WLED_ENDPOINT_STORAGE_KEY = 'wled_udp_endpoint';
 
   const handleDisplayTypeChange = useCallback((next: DisplayType) => {
@@ -138,93 +139,24 @@ export const useLedApp = () => {
   }, [displayType, formatConfigs, ledColors, matrixHeight, matrixWidth, ringLeds, rotation, selectedFormat, stripLeds]);
 
   const outputValueToShow = eagerOutputValue ?? outputValue;
+  const hashSetters = useMemo(
+    () => ({
+      setDisplayType: handleDisplayTypeChange,
+      setRingLeds,
+      setStripLeds,
+      setMatrixWidth,
+      setMatrixHeight,
+      setRotation,
+      setShowLabels,
+      setLedColors,
+    }),
+    [handleDisplayTypeChange, setLedColors, setMatrixHeight, setMatrixWidth, setRingLeds, setRotation, setShowLabels, setStripLeds],
+  );
 
-  // Load from URL hash and localStorage on mount
-  useEffect(() => {
-    const savedHistory = parseStoredHistory(localStorage.getItem('led_history'));
-
-    if (savedHistory.length) {
-      // Defer state update to avoid synchronous setState in effect
-      setTimeout(() => setHistory(savedHistory), 0);
-    }
-
-    const hash = window.location.hash.slice(1);
-    const params = new URLSearchParams(hash);
-    const type = (params.get('type') as DisplayType) || 'ring';
-    const rotationFromHash = parseNumber(params.get('rotation'), 0);
-    const showLabelsFromHash = params.get('labels') === 'true';
-
-    // Defer all state updates that depend on URL parameters
-    setTimeout(() => {
-      if (type === 'ring' || type === 'matrix' || type === 'strip') {
-        handleDisplayTypeChange(type);
-
-        let initialLedColors: RgbColor[] = [];
-
-        if (type === 'ring') {
-          const ringLedCount = parsePositiveInt(params.get('leds'), DEFAULT_RING_LED_COUNT);
-
-          setRingLeds(ringLedCount);
-
-          const colorsParam = params.get('colors');
-          const parsedColors = colorsParam ? colorsParam.split(',').map(hexToRgb) : undefined;
-
-          initialLedColors = sanitizeLedColors(parsedColors, ringLedCount);
-        } else if (type === 'matrix') {
-          const parsedWidth = parsePositiveInt(params.get('width'), DEFAULT_MATRIX_WIDTH);
-          const parsedHeight = parsePositiveInt(params.get('height'), DEFAULT_MATRIX_HEIGHT);
-
-          setMatrixWidth(parsedWidth);
-          setMatrixHeight(parsedHeight);
-
-          const colorsParam = params.get('colors');
-          const parsedColors = colorsParam ? colorsParam.split(',').map(hexToRgb) : undefined;
-
-          initialLedColors = sanitizeLedColors(parsedColors, parsedWidth * parsedHeight);
-        } else {
-          const parsedStrip = parsePositiveInt(params.get('leds'), DEFAULT_STRIP_LED_COUNT);
-          setStripLeds(parsedStrip);
-
-          const colorsParam = params.get('colors');
-          const parsedColors = colorsParam ? colorsParam.split(',').map(hexToRgb) : undefined;
-          initialLedColors = sanitizeLedColors(parsedColors, parsedStrip);
-        }
-
-        setLedColors(initialLedColors); // Set once after determining size
-        setRotation(rotationFromHash);
-        setShowLabels(showLabelsFromHash);
-      }
-
-      setHashInitialized(true);
-    }, 0);
-  }, [handleDisplayTypeChange]);
-
-  // Update URL hash on state change
-  useEffect(() => {
-    if (!hashInitialized) return;
-
-    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight, stripLeds);
-    const colorsForHash = sanitizeLedColors(ledColors, ledCount);
-    const params = new URLSearchParams();
-
-    params.set('type', displayType);
-
-    if (displayType === 'ring' || displayType === 'strip') {
-      params.set('leds', (displayType === 'ring' ? ringLeds : stripLeds).toString());
-    } else {
-      params.set('width', matrixWidth.toString());
-      params.set('height', matrixHeight.toString());
-    }
-
-    params.set('rotation', rotation.toString());
-    params.set('labels', String(showLabels));
-    params.set('colors', colorsForHash.map(rgbToHex).join(','));
-
-    const hash = params.toString();
-    if (window.location.hash !== `#${hash}`) {
-      window.location.hash = hash;
-    }
-  }, [displayType, ringLeds, matrixWidth, matrixHeight, rotation, showLabels, ledColors, hashInitialized, stripLeds]);
+  useHashSync(
+    { displayType, ringLeds, stripLeds, matrixWidth, matrixHeight, rotation, showLabels, ledColors },
+    hashSetters,
+  );
 
   useEffect(() => {
     const cfg = formatConfigs.wled_udp as { ip?: unknown; port?: unknown } | undefined;
@@ -252,60 +184,51 @@ export const useLedApp = () => {
     [currentColor, displayType, matrixHeight, matrixWidth, ringLeds, stripLeds],
   );
 
-  const handleSaveToHistory = useCallback(() => {
-    setIsSavingHistory(true);
-    try {
-      const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight, stripLeds);
-      const safeColors = sanitizeLedColors(ledColors, ledCount);
+  const buildHistoryEntry = useCallback((): HistoryEntry => {
+    const ledCount = getLedCount(displayType, ringLeds, matrixWidth, matrixHeight, stripLeds);
+    const safeColors = sanitizeLedColors(ledColors, ledCount);
 
-      const newHistoryEntry: HistoryEntry =
-        displayType === 'ring'
-          ? {
-              displayType,
-              ringLeds,
-              ledColors: safeColors,
-              rotation,
-              showLabels,
-              timestamp: new Date().toISOString(),
-            }
-          : displayType === 'matrix'
-            ? {
-                displayType,
-                matrixWidth,
-                matrixHeight,
-                ledColors: safeColors,
-                rotation,
-                showLabels,
-                timestamp: new Date().toISOString(),
-              }
-            : {
-                displayType,
-                stripLeds,
-                ledColors: safeColors,
-                rotation,
-                showLabels,
-                timestamp: new Date().toISOString(),
-              };
-
-      const updatedHistory = [newHistoryEntry, ...history];
-
-      setHistory(updatedHistory);
-      localStorage.setItem('led_history', JSON.stringify(updatedHistory));
-    } finally {
-      setIsSavingHistory(false);
+    if (displayType === 'ring') {
+      return {
+        displayType,
+        ringLeds,
+        ledColors: safeColors,
+        rotation,
+        showLabels,
+        timestamp: new Date().toISOString(),
+      };
     }
-  }, [displayType, history, ledColors, matrixHeight, matrixWidth, ringLeds, rotation, showLabels, stripLeds]);
+    if (displayType === 'matrix') {
+      return {
+        displayType,
+        matrixWidth,
+        matrixHeight,
+        ledColors: safeColors,
+        rotation,
+        showLabels,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    return {
+      displayType,
+      stripLeds,
+      ledColors: safeColors,
+      rotation,
+      showLabels,
+      timestamp: new Date().toISOString(),
+    };
+  }, [
+    displayType,
+    ledColors,
+    matrixHeight,
+    matrixWidth,
+    ringLeds,
+    rotation,
+    showLabels,
+    stripLeds,
+  ]);
 
-  const handleDeleteFromHistory = useCallback(
-    (timestamp: string) => {
-      const updatedHistory = history.filter((entry) => entry.timestamp !== timestamp);
-      setHistory(updatedHistory);
-      localStorage.setItem('led_history', JSON.stringify(updatedHistory));
-    },
-    [history],
-  );
-
-  const loadFromHistory = useCallback(
+  const applyHistoryEntry = useCallback(
     (entry: HistoryEntry) => {
       handleDisplayTypeChange(entry.displayType);
       if (entry.displayType === 'ring') {
@@ -327,7 +250,36 @@ export const useLedApp = () => {
             : entry.stripLeds;
       setLedColors(sanitizeLedColors(entry.ledColors, ledCount));
     },
-    [handleDisplayTypeChange],
+    [
+      handleDisplayTypeChange,
+      setLedColors,
+      setMatrixHeight,
+      setMatrixWidth,
+      setRingLeds,
+      setRotation,
+      setShowLabels,
+      setStripLeds,
+    ],
+  );
+
+  const { history, isSavingHistory, save, remove, load } = useHistoryManager(buildHistoryEntry, applyHistoryEntry);
+
+  const handleSaveToHistory = useCallback(() => {
+    save();
+  }, [save]);
+
+  const handleDeleteFromHistory = useCallback(
+    (timestamp: string) => {
+      remove(timestamp);
+    },
+    [remove],
+  );
+
+  const loadFromHistory = useCallback(
+    (entry: HistoryEntry) => {
+      load(entry);
+    },
+    [load],
   );
 
   const handleOutputRequest = useCallback(
