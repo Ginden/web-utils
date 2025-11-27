@@ -46,8 +46,7 @@ export const wledJsonFormat: OutputFormatDefinition = {
     const cfg = config as WledJsonConfig;
     const brightness = clampByte(cfg?.brightness, 255);
     const presetId = clampPresetId(cfg?.presetId, 1);
-    const name =
-      typeof cfg?.presetName === 'string' && cfg.presetName.trim() ? cfg.presetName.trim() : 'Pixel Select';
+    const name = typeof cfg?.presetName === 'string' && cfg.presetName.trim() ? cfg.presetName.trim() : 'Pixel Select';
     const transition = clampUint16(cfg?.transition, 0);
     const includePower = cfg?.includePower !== false;
     const saveToPreset = cfg?.saveToPreset !== false;

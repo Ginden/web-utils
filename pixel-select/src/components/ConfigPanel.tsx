@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { OutputFormat } from '../types';
 import { formatDefinitions } from '../output/formats';
 import Icon from './Icon';
@@ -76,9 +76,11 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   onRotateMatrixPixels,
 }) => {
   const rotationOptions = [0, 45, 90, 135, 180, 225, 270, 315];
-  const formatAllowed = (fmt: (typeof formatDefinitions)[number]) =>
-    !fmt.displayTypes || fmt.displayTypes.includes(displayType);
-  const allowedFormats = useMemo(() => formatDefinitions.filter(formatAllowed), [displayType]);
+  const formatAllowed = useCallback(
+    (fmt: (typeof formatDefinitions)[number]) => !fmt.displayTypes || fmt.displayTypes.includes(displayType),
+    [displayType],
+  );
+  const allowedFormats = useMemo(() => formatDefinitions.filter(formatAllowed), [formatAllowed]);
   const groupedFormats = useMemo(() => {
     const groups: { label: string; formats: typeof formatDefinitions }[] = [];
     formatDefinitions.forEach((fmt) => {
