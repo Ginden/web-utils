@@ -5,6 +5,7 @@ import { esphomeStaticFormat } from './formatters/esphomeStatic';
 import { pngFormat } from './formatters/png';
 import type { FormatConfig, FormatContext, OutputFormatDefinition } from './formatters/types';
 import { uploadablePngFormat } from './formatters/uploadablePng';
+import { wledJsonFormat } from './formatters/wledJson';
 import { wledFormat } from './formatters/wled';
 
 export type { FormatConfig, FormatConfigRenderer, FormatContext, OutputFormatDefinition } from './formatters/types';
@@ -15,6 +16,7 @@ export const formatDefinitions: OutputFormatDefinition[] = [
   esphomeStaticFormat,
   pngFormat,
   uploadablePngFormat,
+  wledJsonFormat,
   wledFormat,
 ];
 

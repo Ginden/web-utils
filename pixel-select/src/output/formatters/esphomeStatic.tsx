@@ -8,6 +8,7 @@ export const esphomeStaticFormat: OutputFormatDefinition = {
   id: 'esphome_static',
   label: 'ESPHome static effect',
   description: 'addressable_lambda with fixed pixels',
+  group: 'Firmware',
   defaultConfig: {
     effectName: 'StaticGenerated',
   },

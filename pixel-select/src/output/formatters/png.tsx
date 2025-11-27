@@ -8,6 +8,7 @@ export const pngFormat: OutputFormatDefinition = {
   id: 'png',
   label: 'PNG image',
   description: 'Download a PNG of the current layout',
+  group: 'Images',
   defaultConfig: {
     resolution: 1024,
     background: '#0f162c',

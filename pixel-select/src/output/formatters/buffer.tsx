@@ -8,6 +8,7 @@ export const bufferFormat: OutputFormatDefinition = {
   id: 'buffer',
   label: 'Buffer (RGB permutations)',
   description: 'Comma-separated array with selectable R/G/B ordering',
+  group: 'Code',
   defaultConfig: { order: 'rgb' as BufferOrder },
   eager: true,
   generate: (colors: RgbColor[], config: FormatConfig) => {

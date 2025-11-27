@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { OutputFormat } from '../types';
 import { formatDefinitions } from '../output/formats';
 import Icon from './Icon';
@@ -78,9 +78,23 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   const rotationOptions = [0, 45, 90, 135, 180, 225, 270, 315];
   const formatAllowed = (fmt: (typeof formatDefinitions)[number]) =>
     !fmt.displayTypes || fmt.displayTypes.includes(displayType);
-  const rawActiveFormat = formatDefinitions.find((f) => f.id === selectedFormat);
-  const fallbackFormat = formatDefinitions.find(formatAllowed) ?? formatDefinitions[0];
-  const activeFormat = rawActiveFormat && formatAllowed(rawActiveFormat) ? rawActiveFormat : fallbackFormat;
+  const allowedFormats = useMemo(() => formatDefinitions.filter(formatAllowed), [displayType]);
+  const groupedFormats = useMemo(() => {
+    const groups: { label: string; formats: typeof formatDefinitions }[] = [];
+    formatDefinitions.forEach((fmt) => {
+      const label = fmt.group ?? 'Other';
+      const existing = groups.find((g) => g.label === label);
+      if (existing) {
+        existing.formats.push(fmt);
+      } else {
+        groups.push({ label, formats: [fmt] });
+      }
+    });
+    return groups;
+  }, []);
+  const rawActiveFormat = allowedFormats.find((f) => f.id === selectedFormat);
+  const fallbackFormat = allowedFormats[0] ?? formatDefinitions[0];
+  const activeFormat = rawActiveFormat ?? fallbackFormat;
   const activeConfig = (formatConfigs[activeFormat.id as OutputFormat] ??
     activeFormat.defaultConfig) as typeof activeFormat.defaultConfig;
   const isBitmapFormat = activeFormat.id === 'png_bitmap_8x8';
@@ -279,10 +293,14 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
           value={selectedFormat}
           onChange={(e) => onSelectFormat(e.target.value as OutputFormat)}
         >
-          {formatDefinitions.map((fmt) => (
-            <option key={fmt.id} value={fmt.id} disabled={!formatAllowed(fmt)}>
-              {fmt.label}
-            </option>
+          {groupedFormats.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.formats.map((fmt) => (
+                <option key={fmt.id} value={fmt.id} disabled={!formatAllowed(fmt)}>
+                  {fmt.label}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </div>

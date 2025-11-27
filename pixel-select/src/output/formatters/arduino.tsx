@@ -5,6 +5,7 @@ export const arduinoFormat: OutputFormatDefinition = {
   id: 'arduino',
   label: 'Arduino (FastLED)',
   description: 'C array of CRGB objects',
+  group: 'Code',
   defaultConfig: {},
   eager: true,
   generate: (colors: RgbColor[]) =>

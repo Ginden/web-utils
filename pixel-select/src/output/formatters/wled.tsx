@@ -18,6 +18,7 @@ export const wledFormat: OutputFormatDefinition = {
   id: 'wled_udp',
   label: 'WLED UDP realtime (WARLS / Hyperion)',
   description: 'Shell command to send WARLS (DRGB/DNRGB) or Hyperion-like UDP packets',
+  group: 'WLED',
   defaultConfig: {
     ip: '192.168.1.100',
     port: 21324,

@@ -4,6 +4,7 @@ export const uploadablePngFormat: OutputFormatDefinition = {
   id: 'png_bitmap_8x8',
   label: 'PNG bitmap (matrix size)',
   description: 'Pixel-perfect PNG matching current matrix dimensions (for uploads)',
+  group: 'Images',
   defaultConfig: {},
   eager: false,
   displayTypes: ['matrix'],

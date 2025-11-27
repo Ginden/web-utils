@@ -21,6 +21,8 @@ export type OutputFormatDefinition = {
   id: OutputFormat;
   label: string;
   description?: string;
+  /** Optional grouping label for the picker. */
+  group?: string;
   defaultConfig: FormatConfig;
   /** Auto-generate output when inputs change (writes to textarea, no downloads). */
   eager?: boolean;
